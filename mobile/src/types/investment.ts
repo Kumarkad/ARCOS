@@ -39,6 +39,33 @@ export interface Holding {
   day_pnl: number;
 }
 
+export interface HoldingUpdatePayload {
+  quantity?: number;
+  average_buy_price?: number;
+  notes?: string;
+}
+
+export interface StockSuggestion {
+  symbol: string;
+  name: string;
+  exchange: string;
+  sector: string;
+  category: string;
+  current_price: number;
+  day_change_pct?: number;
+  tag: string;
+  rationale: string;
+}
+
+export interface StockSearchItem {
+  symbol: string;
+  name: string;
+  exchange: string;
+  asset_type: AssetType;
+  current_price?: number;
+  day_change_pct?: number;
+}
+
 export interface PortfolioSummary {
   total_current_value: number;
   total_invested: number;

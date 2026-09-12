@@ -20,10 +20,12 @@ import {
   IPOPrompt,
   InvestmentAccount,
   IPOAnalyzeResult,
+  StockSuggestion,
+  StockSearchItem,
 } from '../../../src/types/investment';
 import { formatCurrency, formatPercentage } from '../../../src/utils/formatting';
 
-type Segment = 'Portfolio' | 'Watchlist' | 'IPO';
+type Segment = 'Portfolio' | 'Suggestions' | 'Watchlist' | 'IPO';
 
 export default function InvestmentsScreen() {
   const [activeSegment, setActiveSegment] = useState<Segment>('Portfolio');
@@ -40,6 +42,21 @@ export default function InvestmentsScreen() {
   const [txPrice, setTxPrice] = useState('');
   const [txAccount, setTxAccount] = useState('');
   const [txSubmitting, setTxSubmitting] = useState(false);
+
+  // Holding Edit state
+  const [editHoldingModalVisible, setEditHoldingModalVisible] = useState(false);
+  const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
+  const [editHoldingQty, setEditHoldingQty] = useState('');
+  const [editHoldingAvgPrice, setEditHoldingAvgPrice] = useState('');
+  const [editHoldingNotes, setEditHoldingNotes] = useState('');
+  const [editHoldingSubmitting, setEditHoldingSubmitting] = useState(false);
+
+  // Suggestions & Search state
+  const [suggestions, setSuggestions] = useState<StockSuggestion[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<StockSearchItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Watchlist state
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
@@ -65,7 +82,7 @@ export default function InvestmentsScreen() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<IPOAnalyzeResult | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (catOverride?: string) => {
     try {
       if (activeSegment === 'Portfolio') {
         const [portData, accsData] = await Promise.all([
@@ -77,6 +94,11 @@ export default function InvestmentsScreen() {
         if (accsData.length > 0 && !txAccount) {
           setTxAccount(accsData[0].id);
         }
+      } else if (activeSegment === 'Suggestions') {
+        const activeCat = catOverride !== undefined ? catOverride : selectedCategory;
+        const catParam = activeCat === 'ALL' ? undefined : activeCat;
+        const suggData = await investmentApi.getStockSuggestions(catParam);
+        setSuggestions(suggData);
       } else if (activeSegment === 'Watchlist') {
         const wlData = await investmentApi.getWatchlist();
         setWatchlist(wlData);
@@ -93,7 +115,112 @@ export default function InvestmentsScreen() {
     } catch (err: any) {
       console.error('Failed to load investments data:', err);
     }
-  }, [activeSegment, txAccount]);
+  }, [activeSegment, txAccount, selectedCategory]);
+
+  // Holding Edit/Delete Handlers
+  const handleOpenEditHolding = (h: Holding) => {
+    setEditingHolding(h);
+    setEditHoldingQty(String(h.quantity));
+    setEditHoldingAvgPrice(String(h.average_buy_price));
+    setEditHoldingModalVisible(true);
+  };
+
+  const handleSaveEditHolding = async () => {
+    if (!editingHolding) return;
+    const qty = parseFloat(editHoldingQty);
+    const avg = parseFloat(editHoldingAvgPrice);
+    if (isNaN(qty) || qty <= 0 || isNaN(avg) || avg <= 0) {
+      Alert.alert('Validation Error', 'Please enter valid positive numbers for quantity and average buy price.');
+      return;
+    }
+    setEditHoldingSubmitting(true);
+    try {
+      await investmentApi.updateHolding(editingHolding.id, {
+        quantity: qty,
+        average_buy_price: avg,
+        notes: editHoldingNotes.trim() || undefined,
+      });
+      setEditHoldingModalVisible(false);
+      setEditingHolding(null);
+      await loadData();
+      Alert.alert('Success', 'Holding updated successfully!');
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to update holding');
+    } finally {
+      setEditHoldingSubmitting(false);
+    }
+  };
+
+  const handleDeleteHolding = (h: Holding) => {
+    Alert.alert(
+      'Remove Stock Holding',
+      `Are you sure you want to remove ${h.asset.symbol} (${h.quantity} shares) from your portfolio?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await investmentApi.deleteHolding(h.id);
+              await loadData();
+              Alert.alert('Removed', `${h.asset.symbol} holding removed.`);
+            } catch (e: any) {
+              Alert.alert('Error', e.response?.data?.message || 'Failed to delete holding');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Quick Action Handlers for Suggestions
+  const handleQuickBuy = (symbol: string, name?: string, price?: number, type: 'BUY' | 'SELL' = 'BUY') => {
+    setTxSymbol(symbol);
+    setTxType(type);
+    if (price) {
+      setTxPrice(String(price));
+    }
+    setTxQty('');
+    setTxModalVisible(true);
+  };
+
+  const handleAddToWatchlistFromSuggestion = async (symbol: string, name?: string, targetPrice?: number) => {
+    try {
+      await investmentApi.addToWatchlist({
+        symbol,
+        name,
+        target_price: targetPrice,
+      });
+      Alert.alert('Watchlist', `${symbol} added to your watchlist!`);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to add to watchlist');
+    }
+  };
+
+  // Search Stocks Handler
+  const handleSearchTextChange = async (text: string) => {
+    setSearchQuery(text);
+    if (!text.trim() || text.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const results = await investmentApi.searchStocks(text.trim());
+      setSearchResults(results);
+    } catch (e) {
+      console.error('Search stocks failed:', e);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Category select for stock suggestions
+  const handleCategorySelect = (cat: string) => {
+    setSelectedCategory(cat);
+    loadData(cat);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -275,8 +402,14 @@ export default function InvestmentsScreen() {
               className="bg-primary px-3 py-1.5 rounded-lg flex-row items-center gap-1"
             >
               <Ionicons name="add" size={18} color="#ffffff" />
-              <Text className="text-white font-medium text-xs">Transaction</Text>
+              <Text className="text-white font-medium text-xs">Add Stock</Text>
             </TouchableOpacity>
+          )}
+          {activeSegment === 'Suggestions' && (
+            <View className="bg-primary/20 px-2.5 py-1 rounded-full border border-primary flex-row items-center gap-1">
+              <Ionicons name="sparkles" size={13} color="#6366f1" />
+              <Text className="text-primary text-[11px] font-bold">Top Stock Ideas</Text>
+            </View>
           )}
           {activeSegment === 'Watchlist' && (
             <TouchableOpacity
@@ -303,7 +436,7 @@ export default function InvestmentsScreen() {
 
         {/* Tab Selector */}
         <View className="flex-row bg-background rounded-lg p-1 border border-border">
-          {(['Portfolio', 'Watchlist', 'IPO'] as Segment[]).map((segment) => (
+          {(['Portfolio', 'Suggestions', 'Watchlist', 'IPO'] as Segment[]).map((segment) => (
             <TouchableOpacity
               key={segment}
               onPress={() => setActiveSegment(segment)}
@@ -316,7 +449,7 @@ export default function InvestmentsScreen() {
                   activeSegment === segment ? 'text-white' : 'text-textSecondary'
                 }`}
               >
-                {segment === 'IPO' ? 'IPO AI Analysis' : segment}
+                {segment === 'IPO' ? 'IPO AI' : segment}
               </Text>
             </TouchableOpacity>
           ))}
@@ -429,13 +562,253 @@ export default function InvestmentsScreen() {
                         LTP: <Text className="text-text font-semibold">{formatCurrency(h.asset.current_price)}</Text>
                       </Text>
                     </View>
+
+                    {/* Holding Action Buttons */}
+                    <View className="flex-row justify-end items-center gap-2 mt-3 pt-2 border-t border-border/60">
+                      <TouchableOpacity
+                        onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'BUY')}
+                        className="bg-success/15 px-2.5 py-1 rounded border border-success/30 flex-row items-center gap-1"
+                      >
+                        <Ionicons name="add" size={13} color="#22c55e" />
+                        <Text className="text-success text-xs font-semibold">Buy</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'SELL')}
+                        className="bg-danger/15 px-2.5 py-1 rounded border border-danger/30 flex-row items-center gap-1"
+                      >
+                        <Ionicons name="remove" size={13} color="#ef4444" />
+                        <Text className="text-danger text-xs font-semibold">Sell</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleOpenEditHolding(h)}
+                        className="bg-primary/15 px-2.5 py-1 rounded border border-primary/30 flex-row items-center gap-1"
+                      >
+                        <Ionicons name="pencil" size={12} color="#6366f1" />
+                        <Text className="text-primary text-xs font-semibold">Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteHolding(h)}
+                        className="bg-card px-2.5 py-1 rounded border border-border flex-row items-center gap-1"
+                      >
+                        <Ionicons name="trash-outline" size={12} color="#ef4444" />
+                        <Text className="text-danger text-xs font-semibold">Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+
+              {/* Suggestions Discovery Banner */}
+              <TouchableOpacity
+                onPress={() => setActiveSegment('Suggestions')}
+                className="bg-card p-4 rounded-xl border border-primary/40 flex-row items-center justify-between mt-1"
+              >
+                <View className="flex-row items-center gap-3 flex-1 mr-2">
+                  <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center border border-primary/30">
+                    <Ionicons name="sparkles" size={18} color="#6366f1" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-text font-bold text-sm">Discover Stock Suggestions</Text>
+                    <Text className="text-textSecondary text-xs mt-0.5">Explore curated NIFTY 50, Growth, Green Energy & Dividend picks</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* SEGMENT 2: STOCK SUGGESTIONS & SEARCH */}
+          {activeSegment === 'Suggestions' && (
+            <View className="gap-4 pb-12">
+              {/* Search Bar */}
+              <View className="bg-card p-3 rounded-xl border border-border">
+                <View className="flex-row items-center bg-background border border-border rounded-lg px-3 py-2">
+                  <Ionicons name="search-outline" size={18} color="#64748b" />
+                  <TextInput
+                    value={searchQuery}
+                    onChangeText={handleSearchTextChange}
+                    placeholder="Search any Indian stock (e.g. RELIANCE, TCS)..."
+                    placeholderTextColor="#64748b"
+                    className="flex-1 text-text ml-2 text-xs py-0"
+                    autoCapitalize="characters"
+                  />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                    >
+                      <Ionicons name="close-circle" size={16} color="#94a3b8" />
+                    </TouchableOpacity>
+                  )}
+                  {isSearching && (
+                    <ActivityIndicator size="small" color="#6366f1" className="ml-1" />
+                  )}
+                </View>
+
+                {/* Instant Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <View className="mt-2 pt-2 border-t border-border gap-2">
+                    <Text className="text-[11px] font-bold text-textSecondary uppercase">
+                      Search Results ({searchResults.length})
+                    </Text>
+                    {searchResults.map((item) => (
+                      <View
+                        key={item.symbol}
+                        className="bg-background p-2.5 rounded-lg border border-border flex-row justify-between items-center"
+                      >
+                        <View className="flex-1 mr-2">
+                          <View className="flex-row items-center gap-1.5">
+                            <Text className="text-text font-bold text-xs">{item.symbol}</Text>
+                            <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary font-semibold">
+                              {item.exchange}
+                            </Text>
+                          </View>
+                          <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
+                            {item.name}
+                          </Text>
+                        </View>
+                        <View className="flex-row items-center gap-1.5">
+                          <TouchableOpacity
+                            onPress={() => handleAddToWatchlistFromSuggestion(item.symbol, item.name)}
+                            className="bg-card px-2 py-1 rounded border border-border flex-row items-center gap-1"
+                          >
+                            <Ionicons name="eye-outline" size={12} color="#6366f1" />
+                            <Text className="text-primary text-[10px] font-bold">Watch</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handleQuickBuy(item.symbol, item.name)}
+                            className="bg-primary px-2.5 py-1 rounded flex-row items-center gap-1"
+                          >
+                            <Ionicons name="add" size={12} color="#ffffff" />
+                            <Text className="text-white text-[10px] font-bold">+ Buy</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Category Filter Chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2">
+                {[
+                  { id: 'ALL', label: 'All Ideas' },
+                  { id: 'NIFTY 50', label: 'NIFTY 50' },
+                  { id: 'HIGH GROWTH', label: 'High Growth' },
+                  { id: 'GREEN ENERGY', label: 'Green Energy' },
+                  { id: 'DIVIDEND', label: 'Dividend' },
+                  { id: 'DEFENSIVE', label: 'Defensive' },
+                ].map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => handleCategorySelect(c.id)}
+                    className={`px-3.5 py-2 rounded-full border ${
+                      selectedCategory === c.id
+                        ? 'bg-primary border-primary'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-semibold ${
+                        selectedCategory === c.id ? 'text-white' : 'text-textSecondary'
+                      }`}
+                    >
+                      {c.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Suggestions Cards Header */}
+              <View className="flex-row justify-between items-center">
+                <Text className="text-base font-bold text-text">
+                  {selectedCategory === 'ALL' ? 'Curated Opportunities' : `${selectedCategory} Picks`} ({suggestions.length})
+                </Text>
+                <Text className="text-[11px] text-textSecondary">Tap to buy or track</Text>
+              </View>
+
+              {/* Suggestions Cards List */}
+              {suggestions.length === 0 ? (
+                <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
+                  <Ionicons name="sparkles-outline" size={40} color="#64748b" />
+                  <Text className="text-text font-semibold text-sm mt-2">No Suggestions Found</Text>
+                  <Text className="text-textSecondary text-xs text-center mt-1">
+                    Try selecting another category or pull to refresh.
+                  </Text>
+                </View>
+              ) : (
+                suggestions.map((s) => (
+                  <View key={s.symbol} className="bg-card p-4 rounded-xl border border-border">
+                    {/* Top Row: Symbol, Tag, Price & Change */}
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 mr-2">
+                        <View className="flex-row items-center gap-2">
+                          <Text className="text-text font-bold text-base">{s.symbol}</Text>
+                          <View className="bg-primary/15 px-2 py-0.5 rounded border border-primary/30">
+                            <Text className="text-[10px] text-primary font-bold">{s.tag}</Text>
+                          </View>
+                        </View>
+                        <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
+                          {s.name} • {s.sector}
+                        </Text>
+                      </View>
+
+                      <View className="items-end">
+                        <Text className="text-text font-bold text-base">
+                          {formatCurrency(s.current_price)}
+                        </Text>
+                        {s.day_change_pct !== undefined && (
+                          <Text
+                            className={`text-xs font-semibold ${
+                              s.day_change_pct >= 0 ? 'text-success' : 'text-danger'
+                            }`}
+                          >
+                            {s.day_change_pct >= 0 ? '+' : ''}
+                            {formatPercentage(s.day_change_pct)}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+
+                    {/* Rationale Callout Box */}
+                    <View className="bg-background p-2.5 rounded-lg border border-border mt-3">
+                      <View className="flex-row items-center gap-1.5 mb-1">
+                        <Ionicons name="bulb-outline" size={13} color="#f59e0b" />
+                        <Text className="text-[11px] font-bold text-accent">Investment Thesis</Text>
+                        <Text className="text-[10px] text-textSecondary">• {s.category}</Text>
+                      </View>
+                      <Text className="text-textSecondary text-xs leading-4">
+                        {s.rationale}
+                      </Text>
+                    </View>
+
+                    {/* Quick Action Footer */}
+                    <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-border">
+                      <TouchableOpacity
+                        onPress={() => handleAddToWatchlistFromSuggestion(s.symbol, s.name)}
+                        className="bg-card px-3 py-1.5 rounded-lg border border-border flex-row items-center gap-1.5"
+                      >
+                        <Ionicons name="star-outline" size={14} color="#6366f1" />
+                        <Text className="text-text text-xs font-medium">Watchlist</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => handleQuickBuy(s.symbol, s.name, s.current_price, 'BUY')}
+                        className="bg-primary px-3.5 py-1.5 rounded-lg flex-row items-center gap-1.5"
+                      >
+                        <Ionicons name="add-circle-outline" size={15} color="#ffffff" />
+                        <Text className="text-white text-xs font-bold">Add to Portfolio</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 ))
               )}
             </View>
           )}
 
-          {/* SEGMENT 2: WATCHLIST */}
+          {/* SEGMENT 3: WATCHLIST */}
           {activeSegment === 'Watchlist' && (
             <View className="gap-3 pb-12">
               <View className="flex-row justify-between items-center">
@@ -857,6 +1230,100 @@ export default function InvestmentsScreen() {
                 </TouchableOpacity>
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL 5: EDIT HOLDING */}
+      <Modal visible={editHoldingModalVisible} animationType="slide" transparent>
+        <View className="flex-1 justify-end bg-black/60">
+          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-1 mr-2">
+                <Text className="text-lg font-bold text-text">Edit Stock Holding</Text>
+                <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
+                  {editingHolding?.asset?.symbol} • {editingHolding?.asset?.name}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setEditHoldingModalVisible(false);
+                  setEditingHolding(null);
+                }}
+              >
+                <Ionicons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <View className="bg-background p-3 rounded-lg border border-border mb-3 flex-row justify-between items-center">
+              <View>
+                <Text className="text-textSecondary text-[11px]">Current Market Price (LTP)</Text>
+                <Text className="text-text font-bold text-sm">
+                  {formatCurrency(editingHolding?.asset?.current_price || 0)}
+                </Text>
+              </View>
+              <View className="items-end">
+                <Text className="text-textSecondary text-[11px]">Holding Value</Text>
+                <Text className="text-text font-bold text-sm">
+                  {formatCurrency(editingHolding?.current_value || 0)}
+                </Text>
+              </View>
+            </View>
+
+            <View className="flex-row gap-3 mb-3">
+              <View className="flex-1">
+                <Text className="text-textSecondary text-xs mb-1">Quantity (Shares)</Text>
+                <TextInput
+                  value={editHoldingQty}
+                  onChangeText={setEditHoldingQty}
+                  placeholder="e.g. 25"
+                  placeholderTextColor="#64748b"
+                  keyboardType="numeric"
+                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-textSecondary text-xs mb-1">Average Buy Price (₹)</Text>
+                <TextInput
+                  value={editHoldingAvgPrice}
+                  onChangeText={setEditHoldingAvgPrice}
+                  placeholder="e.g. 1540.00"
+                  placeholderTextColor="#64748b"
+                  keyboardType="numeric"
+                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                />
+              </View>
+            </View>
+
+            <Text className="text-textSecondary text-xs mb-1">Notes (Optional)</Text>
+            <TextInput
+              value={editHoldingNotes}
+              onChangeText={setEditHoldingNotes}
+              placeholder="e.g. Long term SIP, target ₹2000"
+              placeholderTextColor="#64748b"
+              className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+            />
+
+            <View className="bg-background/80 p-2.5 rounded-lg border border-border mb-4 flex-row justify-between items-center">
+              <Text className="text-textSecondary text-xs">Recalculated Invested Value:</Text>
+              <Text className="text-text font-bold text-sm">
+                {formatCurrency(
+                  (parseFloat(editHoldingQty) || 0) * (parseFloat(editHoldingAvgPrice) || 0)
+                )}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleSaveEditHolding}
+              disabled={editHoldingSubmitting}
+              className="bg-primary py-3 rounded-xl items-center"
+            >
+              {editHoldingSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text className="text-white font-bold text-base">Save Changes</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

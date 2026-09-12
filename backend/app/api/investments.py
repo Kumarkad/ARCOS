@@ -1,13 +1,14 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.schemas.investment import (
     AccountCreate, AccountResponse, TransactionCreate, TransactionResponse,
-    PortfolioSummaryResponse, WatchlistCreate, WatchlistResponse,
+    PortfolioSummaryResponse, HoldingResponse, HoldingUpdate,
+    WatchlistCreate, WatchlistResponse, StockSuggestion, StockSearchItem,
     IPOPromptCreate, IPOPromptUpdate, IPOPromptResponse,
     IPOAnalyzeRequest, IPOAnalyzeResponse
 )
@@ -56,6 +57,44 @@ async def get_portfolio(
 ):
     summary = await service.get_portfolio_summary(user.id)
     return APIResponse(data=summary)
+
+@router.put("/holdings/{holding_id}", response_model=APIResponse[HoldingResponse])
+async def update_holding(
+    holding_id: UUID,
+    data: HoldingUpdate,
+    user: User = Depends(get_current_user),
+    service: InvestmentService = Depends(get_investment_service)
+):
+    updated = await service.update_holding(user.id, holding_id, data)
+    return APIResponse(data=updated, message="Stock holding updated successfully")
+
+@router.delete("/holdings/{holding_id}", response_model=APIResponse[bool])
+async def delete_holding(
+    holding_id: UUID,
+    user: User = Depends(get_current_user),
+    service: InvestmentService = Depends(get_investment_service)
+):
+    success = await service.delete_holding(user.id, holding_id)
+    return APIResponse(data=success, message="Stock holding removed")
+
+# Stock Suggestions & Search
+@router.get("/suggestions", response_model=APIResponse[List[StockSuggestion]])
+async def get_stock_suggestions(
+    category: Optional[str] = Query(None, description="Filter by category: NIFTY 50, HIGH GROWTH, GREEN ENERGY, DIVIDEND, DEFENSIVE"),
+    user: User = Depends(get_current_user),
+    service: InvestmentService = Depends(get_investment_service)
+):
+    suggestions = await service.get_stock_suggestions(category)
+    return APIResponse(data=suggestions)
+
+@router.get("/search", response_model=APIResponse[List[StockSearchItem]])
+async def search_stocks(
+    query: str = Query(..., min_length=1),
+    user: User = Depends(get_current_user),
+    service: InvestmentService = Depends(get_investment_service)
+):
+    results = await service.search_stocks(query)
+    return APIResponse(data=results)
 
 # Transactions
 @router.get("/transactions", response_model=APIResponse[List[TransactionResponse]])

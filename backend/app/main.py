@@ -20,11 +20,18 @@ settings = get_settings()
 
 from contextlib import asynccontextmanager
 from app.db.session import init_db
+from app.core.logging import setup_logging, RequestLoggingMiddleware, logger
+
+# Initialize central logger
+setup_logging(log_level=settings.LOG_LEVEL, log_file=settings.LOG_FILE_PATH)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info(f"Starting {settings.APP_NAME} in [{settings.ENVIRONMENT}] mode...")
     await init_db()
+    logger.info("Database initialized successfully.")
     yield
+    logger.info(f"Shutting down {settings.APP_NAME}...")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -33,6 +40,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,

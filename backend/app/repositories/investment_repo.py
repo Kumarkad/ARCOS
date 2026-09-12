@@ -131,6 +131,18 @@ class InvestmentRepository:
         res = await self.session.execute(query)
         return list(res.scalars().all())
 
+    async def get_holding_by_id(self, holding_id: UUID, user_id: UUID) -> Optional[InvestmentHolding]:
+        query = select(InvestmentHolding).where(
+            and_(InvestmentHolding.id == holding_id, InvestmentHolding.user_id == user_id)
+        )
+        res = await self.session.execute(query)
+        return res.scalars().first()
+
+    async def delete_holding(self, holding: InvestmentHolding) -> bool:
+        await self.session.delete(holding)
+        await self.session.flush()
+        return True
+
     # Transactions
     async def create_transaction(self, tx: InvestmentTransaction) -> InvestmentTransaction:
         self.session.add(tx)

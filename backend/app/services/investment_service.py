@@ -8,8 +8,8 @@ from app.providers.market_data import MarketDataProvider
 from app.models.investment import InvestmentHolding, InvestmentTransaction
 from app.schemas.investment import (
     AccountCreate, AccountResponse, TransactionCreate, TransactionResponse,
-    HoldingResponse, PortfolioSummaryResponse, AssetResponse,
-    WatchlistCreate, WatchlistResponse
+    HoldingResponse, HoldingUpdate, PortfolioSummaryResponse, AssetResponse,
+    WatchlistCreate, WatchlistResponse, StockSuggestion, StockSearchItem
 )
 from app.core.exceptions import NotFoundError, ValidationError
 
@@ -211,3 +211,290 @@ class InvestmentService:
         if self.session:
             await self.session.commit()
         return res
+
+    # Holding Management (Update / Delete)
+    async def update_holding(self, user_id: UUID, holding_id: UUID, data: HoldingUpdate) -> HoldingResponse:
+        holding = await self.repo.get_holding_by_id(holding_id, user_id)
+        if not holding:
+            raise NotFoundError("Investment holding not found")
+
+        if data.quantity is not None:
+            holding.quantity = data.quantity
+        if data.average_buy_price is not None:
+            holding.average_buy_price = data.average_buy_price
+        if data.notes is not None:
+            holding.notes = data.notes
+
+        holding.total_invested = Decimal(str(round(holding.quantity * holding.average_buy_price, 2)))
+
+        if self.session:
+            await self.session.commit()
+            await self.session.refresh(holding)
+
+        # Refresh quote
+        quote = await self.market_data.get_quote(holding.asset.symbol, holding.asset.asset_type)
+        if quote:
+            holding.asset.current_price = quote["current_price"]
+            holding.asset.previous_close = quote.get("previous_close")
+            holding.asset.day_change = quote.get("day_change")
+            holding.asset.day_change_pct = quote.get("day_change_pct")
+
+        curr_val = Decimal(str(round(holding.quantity * holding.asset.current_price, 2)))
+        invested = holding.total_invested
+        unrealized = curr_val - invested
+        pct = round(float(unrealized / invested * 100), 2) if invested > 0 else 0.0
+        day_pnl = Decimal(str(round(holding.quantity * (holding.asset.day_change or Decimal("0.00")), 2)))
+
+        return HoldingResponse(
+            id=holding.id,
+            account_id=holding.account_id,
+            account_name=holding.account.name if holding.account else "Account",
+            asset=AssetResponse.model_validate(holding.asset),
+            quantity=holding.quantity,
+            average_buy_price=holding.average_buy_price,
+            total_invested=invested,
+            current_value=curr_val,
+            unrealized_pnl=unrealized,
+            unrealized_pnl_pct=pct,
+            day_pnl=day_pnl
+        )
+
+    async def delete_holding(self, user_id: UUID, holding_id: UUID) -> bool:
+        holding = await self.repo.get_holding_by_id(holding_id, user_id)
+        if not holding:
+            raise NotFoundError("Investment holding not found")
+
+        res = await self.repo.delete_holding(holding)
+        if self.session:
+            await self.session.commit()
+        return res
+
+    # Stock Suggestions & Search
+    async def get_stock_suggestions(self, category: Optional[str] = None) -> List[StockSuggestion]:
+        catalog = [
+            {
+                "symbol": "RELIANCE.NS",
+                "name": "Reliance Industries Ltd",
+                "sector": "Energy & Retail",
+                "category": "NIFTY 50",
+                "tag": "Bluechip Leader",
+                "rationale": "Conglomerate dominating telecom (Jio), retail, oil-to-chemicals, and clean energy.",
+                "default_price": Decimal("2980.50"),
+            },
+            {
+                "symbol": "TCS.NS",
+                "name": "Tata Consultancy Services",
+                "sector": "IT & Software",
+                "category": "NIFTY 50",
+                "tag": "Cash Cow",
+                "rationale": "Global IT consulting powerhouse with industry-leading ROE, zero debt, and consistent dividends.",
+                "default_price": Decimal("4120.00"),
+            },
+            {
+                "symbol": "HDFCBANK.NS",
+                "name": "HDFC Bank Ltd",
+                "sector": "Banking & Finance",
+                "category": "NIFTY 50",
+                "tag": "Credit Giant",
+                "rationale": "India's largest private sector bank with unparalleled branch network and premium asset quality.",
+                "default_price": Decimal("1640.20"),
+            },
+            {
+                "symbol": "INFY.NS",
+                "name": "Infosys Ltd",
+                "sector": "IT & Software",
+                "category": "NIFTY 50",
+                "tag": "Tech Growth",
+                "rationale": "Enterprise AI leader with strong recurring multi-year digital transformation contracts.",
+                "default_price": Decimal("1925.00"),
+            },
+            {
+                "symbol": "LT.NS",
+                "name": "Larsen & Toubro Ltd",
+                "sector": "Capital Goods & Infra",
+                "category": "NIFTY 50",
+                "tag": "Capex Supercycle",
+                "rationale": "Prime beneficiary of national infrastructure spending, defense, and international EPC projects.",
+                "default_price": Decimal("3620.00"),
+            },
+            {
+                "symbol": "BHARTIARTL.NS",
+                "name": "Bharti Airtel Ltd",
+                "sector": "Telecom",
+                "category": "NIFTY 50",
+                "tag": "ARPU Expansion",
+                "rationale": "Duopoly telecom player steadily compounding ARPU, enterprise cloud data, and 5G monetisation.",
+                "default_price": Decimal("1540.00"),
+            },
+            {
+                "symbol": "ITC.NS",
+                "name": "ITC Ltd",
+                "sector": "FMCG & Cigarettes",
+                "category": "DIVIDEND",
+                "tag": "Dividend King",
+                "rationale": "Exceptional free cash flows, FMCG volume expansion, and upcoming hotels business demerger.",
+                "default_price": Decimal("505.00"),
+            },
+            {
+                "symbol": "TATAMOTORS.NS",
+                "name": "Tata Motors Ltd",
+                "sector": "Automotive",
+                "category": "NIFTY 50",
+                "tag": "EV Pioneer",
+                "rationale": "Leading Indian passenger EV transition and commercial vehicle profitability.",
+                "default_price": Decimal("975.00"),
+            },
+            {
+                "symbol": "ZOMATO.NS",
+                "name": "Zomato Ltd",
+                "sector": "Consumer Tech",
+                "category": "HIGH GROWTH",
+                "tag": "Hypergrowth",
+                "rationale": "Blinkit quick-commerce dominance turning profitable with rapid order volume expansion.",
+                "default_price": Decimal("265.00"),
+            },
+            {
+                "symbol": "TRENT.NS",
+                "name": "Trent Ltd",
+                "sector": "Retail & Apparel",
+                "category": "HIGH GROWTH",
+                "tag": "Retail Compounding",
+                "rationale": "Zudio value fashion disrupting apparel retail with industry-best inventory turns.",
+                "default_price": Decimal("7100.00"),
+            },
+            {
+                "symbol": "DIXON.NS",
+                "name": "Dixon Technologies",
+                "sector": "Electronics Manufacturing",
+                "category": "HIGH GROWTH",
+                "tag": "Make In India",
+                "rationale": "Top beneficiary of Indian electronics manufacturing PLI scheme across mobiles and laptops.",
+                "default_price": Decimal("12850.00"),
+            },
+            {
+                "symbol": "TATAPOWER.NS",
+                "name": "Tata Power Company Ltd",
+                "sector": "Clean Energy & Utilities",
+                "category": "GREEN ENERGY",
+                "tag": "Solar & EV Moat",
+                "rationale": "Pivoting rapidly into utility solar EPC, PM Surya Ghar rooftop solar, and EV charging network.",
+                "default_price": Decimal("440.00"),
+            },
+            {
+                "symbol": "SUZLON.NS",
+                "name": "Suzlon Energy Ltd",
+                "sector": "Wind Energy",
+                "category": "GREEN ENERGY",
+                "tag": "Turnaround Play",
+                "rationale": "Debt-free balance sheet with multi-gigawatt wind turbine orderbook backed by top C&I clients.",
+                "default_price": Decimal("75.50"),
+            },
+            {
+                "symbol": "COALINDIA.NS",
+                "name": "Coal India Ltd",
+                "sector": "Energy & Mining",
+                "category": "DIVIDEND",
+                "tag": "High Yield",
+                "rationale": "Monopoly producer fueling India's power grid, delivering consistent 6-8% dividend yields.",
+                "default_price": Decimal("490.00"),
+            },
+            {
+                "symbol": "SUNPHARMA.NS",
+                "name": "Sun Pharmaceutical Industries",
+                "sector": "Healthcare & Pharma",
+                "category": "DEFENSIVE",
+                "tag": "Global Specialty",
+                "rationale": "India's largest pharma company with high-margin global specialty dermatology portfolio.",
+                "default_price": Decimal("1830.00"),
+            },
+        ]
+
+        if category and category.upper() != "ALL":
+            catalog = [s for s in catalog if s["category"].upper() == category.upper()]
+
+        results: List[StockSuggestion] = []
+        for item in catalog:
+            q = await self.market_data.get_quote(item["symbol"])
+            price = q["current_price"] if q else item["default_price"]
+            change_pct = q.get("day_change_pct") if q else Decimal("0.00")
+
+            results.append(
+                StockSuggestion(
+                    symbol=item["symbol"],
+                    name=item["name"],
+                    exchange="NSE",
+                    sector=item["sector"],
+                    category=item["category"],
+                    current_price=price,
+                    day_change_pct=change_pct,
+                    tag=item["tag"],
+                    rationale=item["rationale"],
+                )
+            )
+
+        return results
+
+    async def search_stocks(self, query: str) -> List[StockSearchItem]:
+        q_clean = query.strip().upper()
+        if not q_clean:
+            return []
+
+        # Common symbols index
+        index = [
+            ("RELIANCE.NS", "Reliance Industries Ltd", "NSE"),
+            ("TCS.NS", "Tata Consultancy Services Ltd", "NSE"),
+            ("HDFCBANK.NS", "HDFC Bank Ltd", "NSE"),
+            ("INFY.NS", "Infosys Ltd", "NSE"),
+            ("ICICIBANK.NS", "ICICI Bank Ltd", "NSE"),
+            ("LT.NS", "Larsen & Toubro Ltd", "NSE"),
+            ("BHARTIARTL.NS", "Bharti Airtel Ltd", "NSE"),
+            ("SBIN.NS", "State Bank of India", "NSE"),
+            ("ITC.NS", "ITC Ltd", "NSE"),
+            ("TATAMOTORS.NS", "Tata Motors Ltd", "NSE"),
+            ("ZOMATO.NS", "Zomato Ltd", "NSE"),
+            ("TRENT.NS", "Trent Ltd", "NSE"),
+            ("DIXON.NS", "Dixon Technologies Ltd", "NSE"),
+            ("TATAPOWER.NS", "Tata Power Company Ltd", "NSE"),
+            ("SUZLON.NS", "Suzlon Energy Ltd", "NSE"),
+            ("COALINDIA.NS", "Coal India Ltd", "NSE"),
+            ("SUNPHARMA.NS", "Sun Pharmaceutical Industries Ltd", "NSE"),
+            ("WIPRO.NS", "Wipro Ltd", "NSE"),
+            ("HCLTECH.NS", "HCL Technologies Ltd", "NSE"),
+            ("BAJFINANCE.NS", "Bajaj Finance Ltd", "NSE"),
+            ("MARUTI.NS", "Maruti Suzuki India Ltd", "NSE"),
+            ("ASIANPAINT.NS", "Asian Paints Ltd", "NSE"),
+            ("TITAN.NS", "Titan Company Ltd", "NSE"),
+            ("AXISBANK.NS", "Axis Bank Ltd", "NSE"),
+            ("KOTAKBANK.NS", "Kotak Mahindra Bank Ltd", "NSE"),
+            ("NTPC.NS", "NTPC Ltd", "NSE"),
+            ("ONGC.NS", "Oil & Natural Gas Corporation Ltd", "NSE"),
+            ("POWERGRID.NS", "Power Grid Corporation of India", "NSE"),
+            ("ADANIENT.NS", "Adani Enterprises Ltd", "NSE"),
+            ("ADANIPORTS.NS", "Adani Ports & SEZ Ltd", "NSE"),
+        ]
+
+        matches = [
+            item for item in index
+            if q_clean in item[0] or q_clean in item[1].upper()
+        ]
+
+        # If user searched an exact ticker not in the static list, also include it
+        if not any(q_clean == item[0].replace(".NS", "") or q_clean == item[0] for item in matches):
+            symbol = f"{q_clean}.NS" if not q_clean.endswith((".NS", ".BO", ".US")) else q_clean
+            matches.append((symbol, q_clean, "NSE"))
+
+        results: List[StockSearchItem] = []
+        for symbol, name, exchange in matches[:10]:
+            q = await self.market_data.get_quote(symbol)
+            results.append(
+                StockSearchItem(
+                    symbol=symbol,
+                    name=q.get("name", name) if q else name,
+                    exchange=exchange,
+                    asset_type="STOCK",
+                    current_price=q.get("current_price") if q else None,
+                    day_change_pct=q.get("day_change_pct") if q else None,
+                )
+            )
+
+        return results

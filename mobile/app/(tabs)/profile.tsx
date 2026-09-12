@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/stores/authStore';
 import { bikeApi } from '../../src/api/bikes';
@@ -29,6 +30,7 @@ const POPULAR_CURRENCIES = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user, updateProfile, refreshUser, logout } = useAuthStore();
 
   // Personal details state
@@ -261,8 +263,14 @@ export default function ProfileScreen() {
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       {/* Top Header */}
       <View className="px-4 py-3 border-b border-border bg-card flex-row justify-between items-center">
-        <View className="flex-row items-center gap-2">
-          <Ionicons name="person-circle" size={26} color={COLORS.primary} />
+        <View className="flex-row items-center gap-3">
+          <TouchableOpacity
+            onPress={() => (router.canGoBack() ? router.back() : router.push('/(tabs)'))}
+            className="p-1 -ml-1"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+          </TouchableOpacity>
           <Text className="text-xl font-bold text-text">Profile & Settings</Text>
         </View>
         <TouchableOpacity

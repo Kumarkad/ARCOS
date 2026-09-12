@@ -3,6 +3,10 @@ import { ApiResponse } from '../types/api';
 import {
   InvestmentAccount,
   PortfolioSummary,
+  Holding,
+  HoldingUpdatePayload,
+  StockSuggestion,
+  StockSearchItem,
   InvestmentTransaction,
   TransactionCreatePayload,
   WatchlistItem,
@@ -29,6 +33,28 @@ export const investmentApi = {
   // Portfolio
   getPortfolio: async (): Promise<PortfolioSummary> => {
     const res = await api.get<ApiResponse<PortfolioSummary>>('/investments/portfolio');
+    return res.data.data;
+  },
+
+  updateHolding: async (holdingId: string, payload: HoldingUpdatePayload): Promise<Holding> => {
+    const res = await api.put<ApiResponse<Holding>>(`/investments/holdings/${holdingId}`, payload);
+    return res.data.data;
+  },
+
+  deleteHolding: async (holdingId: string): Promise<boolean> => {
+    const res = await api.delete<ApiResponse<boolean>>(`/investments/holdings/${holdingId}`);
+    return res.data.data;
+  },
+
+  // Stock Suggestions & Search
+  getStockSuggestions: async (category?: string): Promise<StockSuggestion[]> => {
+    const url = category ? `/investments/suggestions?category=${encodeURIComponent(category)}` : '/investments/suggestions';
+    const res = await api.get<ApiResponse<StockSuggestion[]>>(url);
+    return res.data.data;
+  },
+
+  searchStocks: async (query: string): Promise<StockSearchItem[]> => {
+    const res = await api.get<ApiResponse<StockSearchItem[]>>(`/investments/search?query=${encodeURIComponent(query)}`);
     return res.data.data;
   },
 

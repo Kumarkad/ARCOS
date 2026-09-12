@@ -32,7 +32,16 @@ class RateLimitError(AppException):
     def __init__(self, message: str = "Too many requests", details: list = None):
         super().__init__(status.HTTP_429_TOO_MANY_REQUESTS, "RATE_LIMIT_EXCEEDED", message, details)
 
+from app.core.logging import get_logger
+
+logger = get_logger("exceptions")
+
 async def app_exception_handler(request: Request, exc: AppException):
+    if exc.status_code >= 500:
+        logger.error(f"[{exc.error_code}] {exc.message} on {request.method} {request.url.path}")
+    else:
+        logger.warning(f"[{exc.error_code}] {exc.message} on {request.method} {request.url.path}")
+
     return JSONResponse(
         status_code=exc.status_code,
         content={

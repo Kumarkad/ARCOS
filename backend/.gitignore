@@ -25,6 +25,10 @@ env/
 # Alembic
 alembic/versions/__pycache__/
 
+# Logs
+logs/
+*.log
+
 # OS
 .DS_Store
 Thumbs.db

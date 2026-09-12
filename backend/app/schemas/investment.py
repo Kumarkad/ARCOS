@@ -87,6 +87,30 @@ class HoldingResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class HoldingUpdate(BaseModel):
+    quantity: Optional[Decimal] = Field(None, gt=0)
+    average_buy_price: Optional[Decimal] = Field(None, gt=0)
+    notes: Optional[str] = None
+
+class StockSuggestion(BaseModel):
+    symbol: str
+    name: str
+    exchange: str = "NSE"
+    sector: str
+    category: str
+    current_price: Decimal
+    day_change_pct: Optional[Decimal] = None
+    tag: str
+    rationale: str
+
+class StockSearchItem(BaseModel):
+    symbol: str
+    name: str
+    exchange: str = "NSE"
+    asset_type: str = "STOCK"
+    current_price: Optional[Decimal] = None
+    day_change_pct: Optional[Decimal] = None
+
 class PortfolioSummaryResponse(BaseModel):
     total_current_value: Decimal
     total_invested: Decimal

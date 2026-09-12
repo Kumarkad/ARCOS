@@ -9,7 +9,7 @@ from app.services.investment_service import InvestmentService
 from app.services.ipo_service import IPOService
 from app.schemas.investment import (
     AccountCreate, TransactionCreate, WatchlistCreate,
-    IPOPromptCreate, IPOPromptUpdate, IPOAnalyzeRequest
+    HoldingUpdate, IPOPromptCreate, IPOPromptUpdate, IPOAnalyzeRequest
 )
 
 @pytest.mark.asyncio
@@ -89,6 +89,28 @@ async def test_investment_portfolio_and_transactions(db_session: AsyncSession, t
     summary3 = await service.get_portfolio_summary(test_user.id)
     h3 = summary3.holdings[0]
     assert h3.quantity == Decimal("15")
+
+    # 5. Directly update holding (e.g. adjust quantity and buy price)
+    updated_h = await service.update_holding(
+        test_user.id,
+        h3.id,
+        HoldingUpdate(quantity=Decimal("25"), average_buy_price=Decimal("2450.00"), notes="Manual adjustment")
+    )
+    assert updated_h.quantity == Decimal("25")
+    assert updated_h.average_buy_price == Decimal("2450.00")
+
+    # 6. Test stock suggestions
+    suggestions = await service.get_stock_suggestions()
+    assert len(suggestions) >= 10
+    nifty_suggestions = await service.get_stock_suggestions("NIFTY 50")
+    assert len(nifty_suggestions) >= 5
+    assert all(s.category == "NIFTY 50" for s in nifty_suggestions)
+
+    # 7. Delete holding
+    deleted = await service.delete_holding(test_user.id, h3.id)
+    assert deleted is True
+    summary4 = await service.get_portfolio_summary(test_user.id)
+    assert len(summary4.holdings) == 0
 
 @pytest.mark.asyncio
 async def test_watchlist_operations(db_session: AsyncSession, test_user):

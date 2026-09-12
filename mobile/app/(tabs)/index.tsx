@@ -45,30 +45,31 @@ export default function HomeScreen() {
           <TouchableOpacity
             onPress={() => router.push('/(tabs)/profile')}
             activeOpacity={0.7}
+            className="flex-1 mr-3"
           >
-            <View className="flex-row items-center mb-1">
-              <Text className="text-primary text-xs font-bold tracking-wider uppercase">ARCOS</Text>
-              <Text className="text-textSecondary text-xs"> • {greeting}</Text>
+            <View className="flex-row items-center gap-2 mb-1.5">
+              <View className="bg-primary/20 px-2 py-0.5 rounded-full border border-primary/40 flex-row items-center gap-1">
+                <Ionicons name="flash" size={11} color="#6C63FF" />
+                <Text className="text-primary text-[11px] font-extrabold">ARCOS</Text>
+              </View>
+              <Text className="text-textSecondary text-xs font-medium">• {greeting}</Text>
             </View>
-            <View className="flex-row items-center gap-1">
-              <Text className="text-text text-2xl font-bold">{user?.full_name || 'User'} 👋</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-text text-2xl font-bold" numberOfLines={1}>
+                {user?.full_name || 'User'}
+              </Text>
+              <Text className="text-xl">👋</Text>
               <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
             </View>
           </TouchableOpacity>
-          <View className="flex-row items-center gap-2">
-            <TouchableOpacity
-              className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center"
-              onPress={() => router.push('/(tabs)/profile')}
-            >
-              <Ionicons name="person-outline" size={18} color="#6C63FF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="w-10 h-10 rounded-full bg-primary items-center justify-center"
-              onPress={() => router.push('/(tabs)/expenses/add')}
-            >
-              <Ionicons name="add" size={24} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
+
+          <TouchableOpacity
+            className="w-11 h-11 rounded-full bg-primary items-center justify-center shadow-sm"
+            onPress={() => router.push('/(tabs)/expenses/add')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={26} color="#ffffff" />
+          </TouchableOpacity>
         </View>
 
         {/* Quick Spending Overview Cards */}
