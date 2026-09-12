@@ -5,7 +5,7 @@ from app.repositories.investment_repo import InvestmentRepository
 from app.providers.llm_provider import LLMProvider
 from app.schemas.investment import (
     IPOPromptCreate, IPOPromptUpdate, IPOPromptResponse,
-    IPOAnalyzeRequest, IPOAnalyzeResponse
+    IPOAnalyzeRequest, IPOAnalyzeResponse, UpcomingIPOItem
 )
 from app.core.exceptions import NotFoundError, ValidationError
 
@@ -116,3 +116,109 @@ class IPOService:
             used_prompt_name=prompt_name,
             analysis_markdown=content
         )
+
+    async def get_upcoming_ipos(self) -> List[UpcomingIPOItem]:
+        return [
+            UpcomingIPOItem(
+                id="ipo-swiggy",
+                company_name="Swiggy Ltd",
+                symbol_tentative="SWIGGY.NS",
+                issue_size="₹11,327 Cr",
+                price_band="₹371 - ₹390",
+                open_date="06 Nov 2024",
+                close_date="08 Nov 2024",
+                listing_date="13 Nov 2024",
+                status="UPCOMING",
+                gmp_pct=14.5,
+                expected_listing_gain="+₹55 (14%)",
+                lot_size=38,
+                category="Mainboard",
+                sector="Consumer Internet & Quick Commerce",
+                description="Hyperlocal delivery giant operating food marketplace and Blinkit rival Instamart across 500+ Indian cities."
+            ),
+            UpcomingIPOItem(
+                id="ipo-hyundai",
+                company_name="Hyundai Motor India Ltd",
+                symbol_tentative="HYUNDAI.NS",
+                issue_size="₹27,870 Cr",
+                price_band="₹1,865 - ₹1,960",
+                open_date="15 Oct 2024",
+                close_date="17 Oct 2024",
+                listing_date="22 Oct 2024",
+                status="UPCOMING",
+                gmp_pct=8.2,
+                expected_listing_gain="+₹160 (8.2%)",
+                lot_size=7,
+                category="Mainboard",
+                sector="Automotive & Mobility",
+                description="India's second-largest passenger vehicle maker with 15%+ domestic market share and mega Talegaon plant rollout."
+            ),
+            UpcomingIPOItem(
+                id="ipo-ntpc-green",
+                company_name="NTPC Green Energy Ltd",
+                symbol_tentative="NTPCGREEN.NS",
+                issue_size="₹10,000 Cr",
+                price_band="₹102 - ₹108",
+                open_date="19 Nov 2024",
+                close_date="22 Nov 2024",
+                listing_date="27 Nov 2024",
+                status="UPCOMING",
+                gmp_pct=18.0,
+                expected_listing_gain="+₹19 (18%)",
+                lot_size=138,
+                category="Mainboard",
+                sector="Renewable Energy & Solar",
+                description="Green power arm of Maharatna PSU NTPC with 3.5 GW operational portfolio targeting 60 GW by 2032."
+            ),
+            UpcomingIPOItem(
+                id="ipo-waaree",
+                company_name="Waaree Energies Ltd",
+                symbol_tentative="WAAREE.NS",
+                issue_size="₹4,321 Cr",
+                price_band="₹1,427 - ₹1,503",
+                open_date="21 Oct 2024",
+                close_date="23 Oct 2024",
+                listing_date="28 Oct 2024",
+                status="UPCOMING",
+                gmp_pct=92.5,
+                expected_listing_gain="+₹1,390 (92%)",
+                lot_size=9,
+                category="Mainboard",
+                sector="Solar Module Manufacturing",
+                description="India's largest solar PV module exporter with 12 GW capacity benefiting from US IRA tax incentives and ALMM mandate."
+            ),
+            UpcomingIPOItem(
+                id="ipo-afcons",
+                company_name="Afcons Infrastructure Ltd",
+                symbol_tentative="AFCONS.NS",
+                issue_size="₹5,430 Cr",
+                price_band="₹440 - ₹463",
+                open_date="25 Oct 2024",
+                close_date="29 Oct 2024",
+                listing_date="04 Nov 2024",
+                status="UPCOMING",
+                gmp_pct=15.0,
+                expected_listing_gain="+₹70 (15%)",
+                lot_size=32,
+                category="Mainboard",
+                sector="Infrastructure & EPC",
+                description="Shapoorji Pallonji group flagship executing high-complexity marine, tunnels, metro and highway projects globally."
+            ),
+            UpcomingIPOItem(
+                id="ipo-sagility",
+                company_name="Sagility India Ltd",
+                symbol_tentative="SAGILITY.NS",
+                issue_size="₹2,107 Cr",
+                price_band="₹28 - ₹30",
+                open_date="05 Nov 2024",
+                close_date="07 Nov 2024",
+                listing_date="12 Nov 2024",
+                status="UPCOMING",
+                gmp_pct=10.0,
+                expected_listing_gain="+₹3 (10%)",
+                lot_size=500,
+                category="Mainboard",
+                sector="Healthcare IT & BPM",
+                description="Pure-play US healthcare services provider offering revenue cycle management and clinical management tech."
+            ),
+        ]

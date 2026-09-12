@@ -22,6 +22,7 @@ import {
   IPOAnalyzeResult,
   StockSuggestion,
   StockSearchItem,
+  UpcomingIPOItem,
 } from '../../../src/types/investment';
 import { formatCurrency, formatPercentage } from '../../../src/utils/formatting';
 
@@ -65,8 +66,17 @@ export default function InvestmentsScreen() {
   const [wlTargetPrice, setWlTargetPrice] = useState('');
   const [wlSubmitting, setWlSubmitting] = useState(false);
 
+  // Autocomplete state for Add Transaction Modal
+  const [txSuggestions, setTxSuggestions] = useState<StockSearchItem[]>([]);
+  const [isTxSearching, setIsTxSearching] = useState(false);
+
+  // Autocomplete state for Watchlist Modal
+  const [wlSuggestions, setWlSuggestions] = useState<StockSearchItem[]>([]);
+  const [isWlSearching, setIsWlSearching] = useState(false);
+
   // IPO state
   const [prompts, setPrompts] = useState<IPOPrompt[]>([]);
+  const [upcomingIPOs, setUpcomingIPOs] = useState<UpcomingIPOItem[]>([]);
   const [promptModalVisible, setPromptModalVisible] = useState(false);
   const [editingPromptId, setEditingPromptId] = useState<string | null>(null);
   const [promptName, setPromptName] = useState('');
@@ -103,8 +113,12 @@ export default function InvestmentsScreen() {
         const wlData = await investmentApi.getWatchlist();
         setWatchlist(wlData);
       } else if (activeSegment === 'IPO') {
-        const promptsData = await investmentApi.getIPOPrompts();
+        const [promptsData, iposData] = await Promise.all([
+          investmentApi.getIPOPrompts(),
+          investmentApi.getUpcomingIPOs(),
+        ]);
         setPrompts(promptsData);
+        setUpcomingIPOs(iposData);
         const defPrompt = promptsData.find((p) => p.is_default);
         if (defPrompt) {
           setSelectedPromptId(defPrompt.id);
@@ -113,7 +127,7 @@ export default function InvestmentsScreen() {
         }
       }
     } catch (err: any) {
-      console.error('Failed to load investments data:', err);
+      console.warn('Failed to load investments data:', err);
     }
   }, [activeSegment, txAccount, selectedCategory]);
 
@@ -161,11 +175,33 @@ export default function InvestmentsScreen() {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            // Optimistic update for instant UI response
+            setPortfolio((prev) => {
+              if (!prev) return prev;
+              const filtered = prev.holdings.filter((item) => item.id !== h.id);
+              const totalVal = filtered.reduce((acc, curr) => acc + curr.current_value, 0);
+              const totalInv = filtered.reduce((acc, curr) => acc + curr.total_invested, 0);
+              const totalPnl = totalVal - totalInv;
+              const totalPnlPct = totalInv > 0 ? (totalPnl / totalInv) * 100 : 0;
+              const totalDayPnl = filtered.reduce((acc, curr) => acc + curr.day_pnl, 0);
+              return {
+                ...prev,
+                holdings: filtered,
+                total_current_value: totalVal,
+                total_invested: totalInv,
+                total_unrealized_pnl: totalPnl,
+                total_unrealized_pnl_pct: totalPnlPct,
+                total_day_pnl: totalDayPnl,
+              };
+            });
+            setEditHoldingModalVisible(false);
+            setEditingHolding(null);
             try {
               await investmentApi.deleteHolding(h.id);
               await loadData();
               Alert.alert('Removed', `${h.asset.symbol} holding removed.`);
             } catch (e: any) {
+              await loadData();
               Alert.alert('Error', e.response?.data?.message || 'Failed to delete holding');
             }
           },
@@ -198,6 +234,76 @@ export default function InvestmentsScreen() {
     }
   };
 
+  // Autocomplete Handlers for Add Transaction Modal
+  const handleTxSymbolChange = async (text: string) => {
+    setTxSymbol(text);
+    if (!text.trim() || text.trim().length < 2) {
+      setTxSuggestions([]);
+      return;
+    }
+    setIsTxSearching(true);
+    try {
+      const results = await investmentApi.searchStocks(text.trim());
+      setTxSuggestions(results);
+    } catch (e) {
+      console.warn('TX stock search failed:', e);
+    } finally {
+      setIsTxSearching(false);
+    }
+  };
+
+  const handleSelectTxSuggestion = (stock: StockSearchItem) => {
+    setTxSymbol(stock.symbol);
+    if (stock.current_price) {
+      setTxPrice(String(stock.current_price));
+    }
+    setTxSuggestions([]);
+  };
+
+  // Autocomplete Handlers for Watchlist Modal
+  const handleWlSymbolChange = async (text: string) => {
+    setWlSymbol(text);
+    if (!text.trim() || text.trim().length < 2) {
+      setWlSuggestions([]);
+      return;
+    }
+    setIsWlSearching(true);
+    try {
+      const results = await investmentApi.searchStocks(text.trim());
+      setWlSuggestions(results);
+    } catch (e) {
+      console.warn('WL stock search failed:', e);
+    } finally {
+      setIsWlSearching(false);
+    }
+  };
+
+  const handleSelectWlSuggestion = (stock: StockSearchItem) => {
+    setWlSymbol(stock.symbol);
+    if (stock.current_price) {
+      setWlTargetPrice(String(stock.current_price));
+    }
+    setWlSuggestions([]);
+  };
+
+  // 1-Tap IPO AI Evaluation
+  const handleEvaluateIPO = (ipo: UpcomingIPOItem) => {
+    setIpoName(ipo.company_name);
+    const details = [
+      ipo.price_band ? `Price Band: ${ipo.price_band}` : '',
+      ipo.issue_size ? `Issue Size: ${ipo.issue_size}` : '',
+      ipo.expected_gmp ? `GMP: ${ipo.expected_gmp}` : '',
+      ipo.sector ? `Sector: ${ipo.sector}` : '',
+      ipo.listing_date ? `Listing Date: ${ipo.listing_date}` : '',
+      ipo.description ? `Note: ${ipo.description}` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ');
+    setIpoDetails(details);
+    setAnalysisResult(null);
+    setAnalyzeModalVisible(true);
+  };
+
   // Search Stocks Handler
   const handleSearchTextChange = async (text: string) => {
     setSearchQuery(text);
@@ -210,7 +316,7 @@ export default function InvestmentsScreen() {
       const results = await investmentApi.searchStocks(text.trim());
       setSearchResults(results);
     } catch (e) {
-      console.error('Search stocks failed:', e);
+      console.warn('Search stocks failed:', e);
     } finally {
       setIsSearching(false);
     }
@@ -722,24 +828,59 @@ export default function InvestmentsScreen() {
               </ScrollView>
 
               {/* Suggestions Cards Header */}
-              <View className="flex-row justify-between items-center">
+              <View className="flex-row justify-between items-center flex-wrap gap-1">
                 <Text className="text-base font-bold text-text">
-                  {selectedCategory === 'ALL' ? 'Curated Opportunities' : `${selectedCategory} Picks`} ({suggestions.length})
+                  {searchQuery.trim()
+                    ? `Matching Ideas`
+                    : selectedCategory === 'ALL'
+                    ? 'Curated Opportunities'
+                    : `${selectedCategory} Picks`}{' '}
+                  (
+                  {
+                    suggestions.filter((s) => {
+                      if (!searchQuery.trim()) return true;
+                      const q = searchQuery.toLowerCase().trim();
+                      return (
+                        s.symbol.toLowerCase().includes(q) ||
+                        s.name.toLowerCase().includes(q) ||
+                        s.sector.toLowerCase().includes(q) ||
+                        s.category.toLowerCase().includes(q)
+                      );
+                    }).length
+                  }
+                  )
                 </Text>
-                <Text className="text-[11px] text-textSecondary">Tap to buy or track</Text>
+                <Text className="text-xs text-textSecondary">Tap to buy or track</Text>
               </View>
 
               {/* Suggestions Cards List */}
-              {suggestions.length === 0 ? (
-                <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
-                  <Ionicons name="sparkles-outline" size={40} color="#64748b" />
-                  <Text className="text-text font-semibold text-sm mt-2">No Suggestions Found</Text>
-                  <Text className="text-textSecondary text-xs text-center mt-1">
-                    Try selecting another category or pull to refresh.
-                  </Text>
-                </View>
-              ) : (
-                suggestions.map((s) => (
+              {(() => {
+                const filteredSuggestions = suggestions.filter((s) => {
+                  if (!searchQuery.trim()) return true;
+                  const q = searchQuery.toLowerCase().trim();
+                  return (
+                    s.symbol.toLowerCase().includes(q) ||
+                    s.name.toLowerCase().includes(q) ||
+                    s.sector.toLowerCase().includes(q) ||
+                    s.category.toLowerCase().includes(q)
+                  );
+                });
+
+                if (filteredSuggestions.length === 0 && searchResults.length === 0) {
+                  return (
+                    <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
+                      <Ionicons name="sparkles-outline" size={40} color="#64748b" />
+                      <Text className="text-text font-semibold text-sm mt-2">No Suggestions Found</Text>
+                      <Text className="text-textSecondary text-xs text-center mt-1">
+                        {searchQuery.trim()
+                          ? `No ideas matching "${searchQuery}". Try a different ticker like RELIANCE, TCS or TATA.`
+                          : 'Try selecting another category or pull to refresh.'}
+                      </Text>
+                    </View>
+                  );
+                }
+
+                return filteredSuggestions.map((s) => (
                   <View key={s.symbol} className="bg-card p-4 rounded-xl border border-border">
                     {/* Top Row: Symbol, Tag, Price & Change */}
                     <View className="flex-row justify-between items-start">
@@ -803,8 +944,8 @@ export default function InvestmentsScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                ))
-              )}
+                ));
+              })()}
             </View>
           )}
 
@@ -877,69 +1018,198 @@ export default function InvestmentsScreen() {
             </View>
           )}
 
-          {/* SEGMENT 3: IPO & CUSTOM SYSTEM PROMPTS */}
+          {/* SEGMENT 4: IPO AI */}
           {activeSegment === 'IPO' && (
             <View className="gap-4 pb-12">
-              {/* Banner */}
-              <View className="bg-card p-4 rounded-xl border border-border">
-                <View className="flex-row items-center gap-2 mb-1">
-                  <Ionicons name="bulb-outline" size={20} color="#6366f1" />
-                  <Text className="text-text font-bold text-base">Custom IPO Evaluation Prompts</Text>
+              {/* Upcoming IPOs Header */}
+              <View className="flex-row justify-between items-center">
+                <View>
+                  <Text className="text-base font-bold text-text">
+                    Upcoming IPOs ({upcomingIPOs.length})
+                  </Text>
+                  <Text className="text-xs text-textSecondary mt-0.5">
+                    Companies listing soon on NSE / BSE
+                  </Text>
                 </View>
-                <Text className="text-textSecondary text-xs leading-5">
-                  Customize the system prompts used by the AI to analyze upcoming IPOs. You can create different analysis strategies (e.g. GMP focus, Long-term fundamentals, or Listing gains).
-                </Text>
                 <TouchableOpacity
                   onPress={() => {
-                    setEditingPromptId(null);
-                    setPromptName('');
-                    setPromptContent('');
-                    setPromptIsDefault(false);
-                    setPromptModalVisible(true);
+                    setIpoName('');
+                    setIpoDetails('');
+                    setAnalysisResult(null);
+                    setAnalyzeModalVisible(true);
                   }}
-                  className="mt-3 bg-primary/20 border border-primary px-3 py-2 rounded-lg items-center"
+                  className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1"
                 >
-                  <Text className="text-primary font-semibold text-xs">+ Add New Analysis Prompt</Text>
+                  <Ionicons name="sparkles" size={13} color="#ffffff" />
+                  <Text className="text-white text-xs font-bold">Custom AI Check</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* List of Prompts */}
-              <Text className="text-base font-bold text-text">Your Analysis Prompts ({prompts.length})</Text>
-
-              {prompts.map((p) => (
-                <View key={p.id} className="bg-card p-4 rounded-xl border border-border">
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center gap-2">
-                      <Text className="text-text font-bold text-base">{p.name}</Text>
-                      {p.is_default && (
-                        <View className="bg-success/20 px-2 py-0.5 rounded-full border border-success">
-                          <Text className="text-success text-[10px] font-bold">DEFAULT</Text>
+              {/* Upcoming IPOs List */}
+              {upcomingIPOs.length === 0 ? (
+                <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
+                  <Ionicons name="newspaper-outline" size={40} color="#64748b" />
+                  <Text className="text-text font-semibold text-sm mt-2">No Upcoming IPOs Found</Text>
+                  <Text className="text-textSecondary text-xs text-center mt-1">
+                    Pull down to refresh or check back later for newly announced issues.
+                  </Text>
+                </View>
+              ) : (
+                upcomingIPOs.map((ipo) => (
+                  <View key={ipo.id} className="bg-card p-4 rounded-xl border border-border">
+                    {/* Top Row: Company Name, Symbol, Status & GMP */}
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 mr-2">
+                        <View className="flex-row items-center gap-2 flex-wrap">
+                          <Text className="text-text font-bold text-base">{ipo.company_name}</Text>
+                          {ipo.symbol && (
+                            <View className="bg-background px-1.5 py-0.5 rounded border border-border">
+                              <Text className="text-[10px] text-textSecondary font-semibold">
+                                {ipo.symbol}
+                              </Text>
+                            </View>
+                          )}
                         </View>
-                      )}
+                        <Text className="text-textSecondary text-xs mt-0.5">
+                          {ipo.sector || 'Mainboard Issue'}
+                        </Text>
+                      </View>
+
+                      <View className="items-end gap-1">
+                        <View
+                          className={`px-2 py-0.5 rounded-full ${
+                            ipo.status === 'Open'
+                              ? 'bg-success/20 border border-success'
+                              : 'bg-primary/20 border border-primary'
+                          }`}
+                        >
+                          <Text
+                            className={`text-[10px] font-bold ${
+                              ipo.status === 'Open' ? 'text-success' : 'text-primary'
+                            }`}
+                          >
+                            {ipo.status}
+                          </Text>
+                        </View>
+                        {ipo.expected_gmp && (
+                          <View className="bg-success/15 px-2 py-0.5 rounded border border-success/30">
+                            <Text className="text-[10px] text-success font-bold">
+                              GMP {ipo.expected_gmp}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
-                    <View className="flex-row items-center gap-2">
+
+                    {/* Issue Parameters Box */}
+                    <View className="bg-background p-2.5 rounded-lg border border-border mt-3 flex-row justify-between">
+                      <View>
+                        <Text className="text-textSecondary text-[10px] font-medium">Price Band</Text>
+                        <Text className="text-text text-xs font-bold mt-0.5">
+                          {ipo.price_band || 'TBA'}
+                        </Text>
+                      </View>
+                      <View>
+                        <Text className="text-textSecondary text-[10px] font-medium">Issue Size</Text>
+                        <Text className="text-text text-xs font-bold mt-0.5">
+                          {ipo.issue_size || 'TBA'}
+                        </Text>
+                      </View>
+                      <View className="items-end">
+                        <Text className="text-textSecondary text-[10px] font-medium">Listing Date</Text>
+                        <Text className="text-text text-xs font-bold mt-0.5">
+                          {ipo.listing_date || 'Upcoming'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {ipo.description && (
+                      <Text className="text-textSecondary text-xs mt-2.5 leading-4" numberOfLines={2}>
+                        {ipo.description}
+                      </Text>
+                    )}
+
+                    {/* Bottom Action Row */}
+                    <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-border">
+                      <View className="flex-row items-center gap-1">
+                        <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
+                        <Text className="text-[11px] text-textSecondary">
+                          {ipo.open_date && ipo.close_date
+                            ? `${ipo.open_date} - ${ipo.close_date}`
+                            : 'Dates TBA'}
+                        </Text>
+                      </View>
+
                       <TouchableOpacity
-                        onPress={() => {
-                          setEditingPromptId(p.id);
-                          setPromptName(p.name);
-                          setPromptContent(p.prompt_content);
-                          setPromptIsDefault(p.is_default);
-                          setPromptModalVisible(true);
-                        }}
+                        onPress={() => handleEvaluateIPO(ipo)}
+                        className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
                       >
-                        <Ionicons name="pencil" size={18} color="#6366f1" />
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDeletePrompt(p.id, p.name)}>
-                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                        <Ionicons name="sparkles" size={13} color="#ffffff" />
+                        <Text className="text-white text-xs font-bold">Evaluate with AI</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
+                ))
+              )}
 
-                  <Text className="text-textSecondary text-xs mt-2 bg-background p-2.5 rounded-lg font-mono" numberOfLines={4}>
-                    {p.prompt_content}
-                  </Text>
+              {/* Custom Prompts Config Accordion/Card */}
+              <View className="bg-card p-4 rounded-xl border border-border mt-2">
+                <View className="flex-row items-center justify-between mb-1">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="options-outline" size={18} color="#6366f1" />
+                    <Text className="text-text font-bold text-sm">AI Evaluation Prompts</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setEditingPromptId(null);
+                      setPromptName('');
+                      setPromptContent('');
+                      setPromptIsDefault(false);
+                      setPromptModalVisible(true);
+                    }}
+                    className="bg-primary/20 border border-primary px-2.5 py-1 rounded-lg"
+                  >
+                    <Text className="text-primary font-semibold text-[11px]">+ New Prompt</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
+                <Text className="text-textSecondary text-[11px] leading-4 mb-3">
+                  Customize the system prompts used by the AI when evaluating IPO metrics.
+                </Text>
+
+                {prompts.map((p) => (
+                  <View key={p.id} className="bg-background p-3 rounded-lg border border-border mb-2">
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-text font-semibold text-xs">{p.name}</Text>
+                        {p.is_default && (
+                          <View className="bg-success/20 px-1.5 py-0.2 rounded border border-success">
+                            <Text className="text-success text-[9px] font-bold">DEFAULT</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-row items-center gap-2">
+                        <TouchableOpacity
+                          onPress={() => {
+                            setEditingPromptId(p.id);
+                            setPromptName(p.name);
+                            setPromptContent(p.prompt_content);
+                            setPromptIsDefault(p.is_default);
+                            setPromptModalVisible(true);
+                          }}
+                        >
+                          <Ionicons name="pencil" size={15} color="#6366f1" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDeletePrompt(p.id, p.name)}>
+                          <Ionicons name="trash-outline" size={15} color="#ef4444" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <Text className="text-textSecondary text-[11px] mt-1 font-mono" numberOfLines={2}>
+                      {p.prompt_content}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
           )}
         </ScrollView>
@@ -973,14 +1243,56 @@ export default function InvestmentsScreen() {
             </View>
 
             <Text className="text-textSecondary text-xs mb-1">Ticker / Symbol (e.g. RELIANCE.NS)</Text>
-            <TextInput
-              value={txSymbol}
-              onChangeText={setTxSymbol}
-              placeholder="e.g. INFY.NS or 119598 (AMFI code)"
-              placeholderTextColor="#64748b"
-              autoCapitalize="characters"
-              className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3"
-            />
+            <View className="relative mb-2">
+              <TextInput
+                value={txSymbol}
+                onChangeText={handleTxSymbolChange}
+                placeholder="Type symbol (e.g. INFY, TATA, RELIANCE)..."
+                placeholderTextColor="#64748b"
+                autoCapitalize="characters"
+                className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+              />
+              {isTxSearching && (
+                <ActivityIndicator
+                  size="small"
+                  color="#6366f1"
+                  style={{ position: 'absolute', right: 12, top: 12 }}
+                />
+              )}
+            </View>
+
+            {/* Autocomplete Dropdown */}
+            {txSuggestions.length > 0 && (
+              <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
+                <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
+                  Matching Stocks ({txSuggestions.length})
+                </Text>
+                <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {txSuggestions.map((item) => (
+                    <TouchableOpacity
+                      key={item.symbol}
+                      onPress={() => handleSelectTxSuggestion(item)}
+                      className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
+                    >
+                      <View className="flex-1 mr-2">
+                        <View className="flex-row items-center gap-1.5">
+                          <Text className="text-text font-bold text-xs">{item.symbol}</Text>
+                          <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
+                            {item.exchange}
+                          </Text>
+                        </View>
+                        <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                      </View>
+                      {item.current_price && (
+                        <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             <View className="flex-row gap-3 mb-4">
               <View className="flex-1">
@@ -1034,14 +1346,56 @@ export default function InvestmentsScreen() {
             </View>
 
             <Text className="text-textSecondary text-xs mb-1">Symbol (e.g. TCS.NS, NIFTY50.NS)</Text>
-            <TextInput
-              value={wlSymbol}
-              onChangeText={setWlSymbol}
-              placeholder="e.g. HDFCBANK.NS"
-              placeholderTextColor="#64748b"
-              autoCapitalize="characters"
-              className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3"
-            />
+            <View className="relative mb-2">
+              <TextInput
+                value={wlSymbol}
+                onChangeText={handleWlSymbolChange}
+                placeholder="Type symbol (e.g. HDFC, TATA, INFY)..."
+                placeholderTextColor="#64748b"
+                autoCapitalize="characters"
+                className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+              />
+              {isWlSearching && (
+                <ActivityIndicator
+                  size="small"
+                  color="#6366f1"
+                  style={{ position: 'absolute', right: 12, top: 12 }}
+                />
+              )}
+            </View>
+
+            {/* Autocomplete Dropdown */}
+            {wlSuggestions.length > 0 && (
+              <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
+                <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
+                  Matching Stocks ({wlSuggestions.length})
+                </Text>
+                <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {wlSuggestions.map((item) => (
+                    <TouchableOpacity
+                      key={item.symbol}
+                      onPress={() => handleSelectWlSuggestion(item)}
+                      className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
+                    >
+                      <View className="flex-1 mr-2">
+                        <View className="flex-row items-center gap-1.5">
+                          <Text className="text-text font-bold text-xs">{item.symbol}</Text>
+                          <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
+                            {item.exchange}
+                          </Text>
+                        </View>
+                        <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                      </View>
+                      {item.current_price && (
+                        <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             <Text className="text-textSecondary text-xs mb-1">Target Price Alert (Optional ₹)</Text>
             <TextInput
@@ -1316,7 +1670,7 @@ export default function InvestmentsScreen() {
             <TouchableOpacity
               onPress={handleSaveEditHolding}
               disabled={editHoldingSubmitting}
-              className="bg-primary py-3 rounded-xl items-center"
+              className="bg-primary py-3 rounded-xl items-center mb-2"
             >
               {editHoldingSubmitting ? (
                 <ActivityIndicator color="#ffffff" />
@@ -1324,6 +1678,17 @@ export default function InvestmentsScreen() {
                 <Text className="text-white font-bold text-base">Save Changes</Text>
               )}
             </TouchableOpacity>
+
+            {editingHolding && (
+              <TouchableOpacity
+                onPress={() => handleDeleteHolding(editingHolding)}
+                disabled={editHoldingSubmitting}
+                className="bg-danger/15 border border-danger/30 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5"
+              >
+                <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                <Text className="text-danger font-bold text-sm">Delete Stock from Portfolio</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>

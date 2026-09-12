@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+from datetime import date
+from typing import Optional
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.api.deps import get_current_user
@@ -18,8 +20,16 @@ def get_analytics_service(db: AsyncSession = Depends(get_db)) -> AnalyticsServic
 
 @router.get("", response_model=APIResponse[SpendingAnalyticsResponse])
 async def get_analytics(
+    period: str = Query("1m", pattern="^(1m|6m|custom)$"),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     user: User = Depends(get_current_user),
     service: AnalyticsService = Depends(get_analytics_service)
 ):
-    analytics = await service.get_analytics(user.id)
+    analytics = await service.get_analytics(
+        user.id,
+        period=period,
+        start_date=start_date,
+        end_date=end_date
+    )
     return APIResponse(data=analytics)

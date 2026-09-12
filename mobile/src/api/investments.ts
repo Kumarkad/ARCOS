@@ -16,6 +16,7 @@ import {
   IPOPromptUpdatePayload,
   IPOAnalyzeRequest,
   IPOAnalyzeResult,
+  UpcomingIPOItem,
 } from '../types/investment';
 
 export const investmentApi = {
@@ -111,4 +112,11 @@ export const investmentApi = {
     const res = await api.post<ApiResponse<IPOAnalyzeResult>>('/investments/ipo/analyze', payload);
     return res.data.data;
   },
+
+  // Upcoming IPOs
+  getUpcomingIPOs: async (): Promise<UpcomingIPOItem[]> => {
+    const res = await api.get<ApiResponse<UpcomingIPOItem[]>>('/investments/ipo/upcoming');
+    return res.data.data;
+  },
 };
+

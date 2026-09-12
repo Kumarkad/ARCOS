@@ -10,7 +10,7 @@ from app.schemas.investment import (
     PortfolioSummaryResponse, HoldingResponse, HoldingUpdate,
     WatchlistCreate, WatchlistResponse, StockSuggestion, StockSearchItem,
     IPOPromptCreate, IPOPromptUpdate, IPOPromptResponse,
-    IPOAnalyzeRequest, IPOAnalyzeResponse
+    IPOAnalyzeRequest, IPOAnalyzeResponse, UpcomingIPOItem
 )
 from app.schemas.common import APIResponse
 from app.repositories.investment_repo import InvestmentRepository
@@ -187,3 +187,11 @@ async def analyze_ipo(
 ):
     result = await service.analyze_ipo(user.id, data)
     return APIResponse(data=result)
+
+@router.get("/ipo/upcoming", response_model=APIResponse[List[UpcomingIPOItem]])
+async def get_upcoming_ipos(
+    user: User = Depends(get_current_user),
+    service: IPOService = Depends(get_ipo_service)
+):
+    ipos = await service.get_upcoming_ipos()
+    return APIResponse(data=ipos)

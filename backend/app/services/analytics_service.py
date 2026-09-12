@@ -1,13 +1,13 @@
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.analytics_repo import AnalyticsRepository
 from app.repositories.budget_repo import BudgetRepository
 from app.schemas.analytics import (
     SpendingAnalyticsResponse, PeriodTrend, MerchantSpend,
-    PaymentMethodSpend, SpendingInsight
+    PaymentMethodSpend, SpendingInsight, CategoryBreakdownItem, DailyTrendItem
 )
 
 class AnalyticsService:
@@ -21,51 +21,67 @@ class AnalyticsService:
         self.budget_repo = budget_repo
         self.session = session
 
-    async def get_analytics(self, user_id: UUID) -> SpendingAnalyticsResponse:
+    async def get_analytics(
+        self,
+        user_id: UUID,
+        period: str = "1m",
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> SpendingAnalyticsResponse:
         today = date.today()
-        # This month range
-        first_of_this_month = today.replace(day=1)
-        
-        # Last month range
-        last_month_end = first_of_this_month - timedelta(days=1)
-        first_of_last_month = last_month_end.replace(day=1)
 
-        # 1. Monthly totals
-        this_month_stats = await self.analytics_repo.get_total_spend_and_count(
-            user_id, first_of_this_month, today
+        # Date range resolution
+        if period == "1m":
+            filter_start = today - timedelta(days=30)
+            filter_end = today
+        elif period == "6m":
+            filter_start = today - timedelta(days=180)
+            filter_end = today
+        elif period == "custom" and start_date and end_date:
+            filter_start = min(start_date, end_date)
+            filter_end = max(start_date, end_date)
+        else:
+            filter_start = today - timedelta(days=30)
+            filter_end = today
+
+        period_days = max((filter_end - filter_start).days, 1)
+
+        # 1. Period totals (total spend and count in this range)
+        period_stats = await self.analytics_repo.get_total_spend_and_count(
+            user_id, filter_start, filter_end
         )
-        last_month_stats = await self.analytics_repo.get_total_spend_and_count(
-            user_id, first_of_last_month, last_month_end
+        period_total = period_stats["total"]
+        period_count = period_stats["count"]
+
+        # Comparison period (previous period of identical duration)
+        prev_period_end = filter_start - timedelta(days=1)
+        prev_period_start = prev_period_end - timedelta(days=period_days)
+        prev_period_stats = await self.analytics_repo.get_total_spend_and_count(
+            user_id, prev_period_start, prev_period_end
         )
+        prev_period_total = prev_period_stats["total"]
 
-        this_month_total = this_month_stats["total"]
-        last_month_total = last_month_stats["total"]
+        # Period-over-period % change
+        pop_change = 0.0
+        if prev_period_total > Decimal("0.00"):
+            pop_change = round(float((period_total - prev_period_total) / prev_period_total * 100), 1)
 
-        # Month-over-month % change
-        mom_change = 0.0
-        if last_month_total > Decimal("0.00"):
-            mom_change = round(float((this_month_total - last_month_total) / last_month_total * 100), 1)
-
-        # 2. Daily and weekly averages over past 30 days
-        past_30_days_start = today - timedelta(days=30)
-        past_30_stats = await self.analytics_repo.get_total_spend_and_count(
-            user_id, past_30_days_start, today
-        )
-        daily_avg = Decimal(str(round(float(past_30_stats["total"] / 30), 2)))
+        # 2. Daily, weekly, and monthly averages based on selected period
+        daily_avg = Decimal(str(round(float(period_total / period_days), 2)))
         weekly_avg = Decimal(str(round(float(daily_avg * 7), 2)))
         monthly_avg = Decimal(str(round(float(daily_avg * 30), 2)))
 
-        # 3. Monthly Trends (Past 6 months)
+        # 3. Monthly Trends
         monthly_trends: List[PeriodTrend] = []
+        first_of_this_month = today.replace(day=1)
+        months_count = 6 if period in ("1m", "6m") else max(min(period_days // 30, 12), 1)
         cur = first_of_this_month
-        for _ in range(6):
-            # start and end of that month
+        for _ in range(months_count):
             if cur.month == 12:
                 next_month = cur.replace(year=cur.year + 1, month=1, day=1)
             else:
                 next_month = cur.replace(month=cur.month + 1, day=1)
             m_end = next_month - timedelta(days=1)
-            # If current month, cap at today
             m_cap = min(today, m_end) if cur == first_of_this_month else m_end
 
             m_stats = await self.analytics_repo.get_total_spend_and_count(user_id, cur, m_cap)
@@ -77,15 +93,14 @@ class AnalyticsService:
                 )
             )
 
-            # Move to previous month
             prev_m_end = cur - timedelta(days=1)
             cur = prev_m_end.replace(day=1)
 
         monthly_trends.reverse()
 
-        # 4. Top Merchants (past 90 days)
+        # 4. Top Merchants (in selected period)
         merchants_data = await self.analytics_repo.get_top_merchants(
-            user_id, today - timedelta(days=90), today, limit=5
+            user_id, filter_start, filter_end, limit=5
         )
         top_merchants = [
             MerchantSpend(
@@ -96,9 +111,9 @@ class AnalyticsService:
             for m in merchants_data
         ]
 
-        # 5. Payment Methods (this month)
+        # 5. Payment Methods (in selected period)
         pm_data = await self.analytics_repo.get_payment_methods(
-            user_id, first_of_this_month, today
+            user_id, filter_start, filter_end
         )
         payment_methods = [
             PaymentMethodSpend(
@@ -112,22 +127,21 @@ class AnalyticsService:
         # 6. Smart Personalized Insights
         insights: List[SpendingInsight] = []
 
-        # Check for Month-over-month increase
-        if mom_change > 20.0:
+        if pop_change > 20.0:
             insights.append(
                 SpendingInsight(
                     type="warning",
                     title="Spending Increase Alert",
-                    message=f"📈 Your monthly spending is {mom_change}% higher than this time last month.",
+                    message=f"Spending in this period is {pop_change}% higher than the previous period.",
                     icon="trending-up"
                 )
             )
-        elif mom_change < -15.0 and last_month_total > Decimal("0.00"):
+        elif pop_change < -15.0 and prev_period_total > Decimal("0.00"):
             insights.append(
                 SpendingInsight(
                     type="milestone",
                     title="Great Savings Pace!",
-                    message=f"🎉 You have spent {abs(mom_change)}% less than last month so far.",
+                    message=f"You spent {abs(pop_change)}% less than the previous period.",
                     icon="trophy-outline"
                 )
             )
@@ -142,7 +156,7 @@ class AnalyticsService:
                     SpendingInsight(
                         type="warning",
                         title=f"Budget Exceeded: {b.name}",
-                        message=f"🚨 You have exceeded your '{b.name}' budget limit of ₹{b.total_amount:,.0f}!",
+                        message=f"You have exceeded your '{b.name}' budget limit of ₹{b.total_amount:,.0f}!",
                         icon="alert-circle"
                     )
                 )
@@ -151,31 +165,65 @@ class AnalyticsService:
                     SpendingInsight(
                         type="warning",
                         title=f"Budget Caution: {b.name}",
-                        message=f"⚠️ You have used {round(pct, 1)}% of your '{b.name}' budget.",
+                        message=f"You have used {round(pct, 1)}% of your '{b.name}' budget.",
                         icon="warning-outline"
                     )
                 )
 
         # Daily Average Insight
         if daily_avg > Decimal("0.00"):
+            amt = f"₹{daily_avg:.2f}" if daily_avg < Decimal("1.00") else f"₹{daily_avg:,.0f}"
             insights.append(
                 SpendingInsight(
                     type="tip",
                     title="Daily Spending Baseline",
-                    message=f"💡 Your average daily spending over the last 30 days is ₹{daily_avg:,.0f}.",
-                    icon="information-circle-outline"
+                    message=f"Your average daily spending in this period is {amt} ({period_days} days).",
+                    icon="bulb-outline"
                 )
             )
+
+        # Category Breakdown for Pie Chart
+        cat_data = await self.analytics_repo.get_category_spending(user_id, filter_start, filter_end)
+        total_cat_spend = sum((c["total_amount"] for c in cat_data), Decimal("0.00"))
+        category_breakdown = [
+            CategoryBreakdownItem(
+                category_name=c["category_name"],
+                total_amount=c["total_amount"],
+                percentage=round(float(c["total_amount"] / total_cat_spend * 100), 1) if total_cat_spend > 0 else 0.0,
+                color=c["color"],
+                icon=c["icon"]
+            )
+            for c in cat_data
+        ]
+
+        # Daily Spending Trend for Graph
+        daily_data = await self.analytics_repo.get_daily_spending(user_id, filter_start, filter_end)
+        daily_trends = [
+            DailyTrendItem(
+                date=d["expense_date"].isoformat(),
+                day_label=d["expense_date"].strftime("%d %b"),
+                total_amount=d["total_amount"]
+            )
+            for d in daily_data
+        ]
 
         return SpendingAnalyticsResponse(
             daily_average=daily_avg,
             weekly_average=weekly_avg,
             monthly_average=monthly_avg,
-            this_month_total=this_month_total,
-            last_month_total=last_month_total,
-            month_over_month_change_pct=mom_change,
+            this_month_total=period_total,
+            last_month_total=prev_period_total,
+            month_over_month_change_pct=pop_change,
             monthly_trends=monthly_trends,
             top_merchants=top_merchants,
             payment_methods=payment_methods,
-            insights=insights
+            insights=insights,
+            category_breakdown=category_breakdown,
+            daily_trends=daily_trends,
+            period=period,
+            start_date=filter_start.isoformat(),
+            end_date=filter_end.isoformat(),
+            period_total=period_total,
+            period_days=period_days,
+            period_transaction_count=period_count
         )

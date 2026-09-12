@@ -117,6 +117,8 @@ class AnalyticsRepository:
         query = (
             select(
                 Category.name.label("category_name"),
+                Category.color.label("color"),
+                Category.icon.label("icon"),
                 func.sum(Expense.amount).label("total_amount")
             )
             .join(Category, Expense.category_id == Category.id)
@@ -128,13 +130,46 @@ class AnalyticsRepository:
                     Expense.expense_date <= end_date
                 )
             )
-            .group_by(Category.name)
+            .group_by(Category.name, Category.color, Category.icon)
             .order_by(func.sum(Expense.amount).desc())
         )
         result = await self.session.execute(query)
         return [
             {
                 "category_name": row.category_name,
+                "color": row.color or "#6C63FF",
+                "icon": row.icon or "pricetag-outline",
+                "total_amount": Decimal(str(row.total_amount))
+            }
+            for row in result.all()
+        ]
+
+    async def get_daily_spending(
+        self,
+        user_id: UUID,
+        start_date: date,
+        end_date: date
+    ) -> List[Dict[str, Any]]:
+        query = (
+            select(
+                Expense.expense_date.label("expense_date"),
+                func.sum(Expense.amount).label("total_amount")
+            )
+            .where(
+                and_(
+                    Expense.user_id == user_id,
+                    Expense.deleted_at.is_(None),
+                    Expense.expense_date >= start_date,
+                    Expense.expense_date <= end_date
+                )
+            )
+            .group_by(Expense.expense_date)
+            .order_by(Expense.expense_date.asc())
+        )
+        result = await self.session.execute(query)
+        return [
+            {
+                "expense_date": row.expense_date,
                 "total_amount": Decimal(str(row.total_amount))
             }
             for row in result.all()

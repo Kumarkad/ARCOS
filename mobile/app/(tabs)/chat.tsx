@@ -18,11 +18,11 @@ import { ChatMessage, PendingAction } from '../../src/types/chat';
 import { formatINR } from '../../src/utils/formatting';
 
 const QUICK_PROMPTS = [
-  'I bought chai for 20',
-  'Spent 450 on dinner',
-  'Bought petrol for 1200',
+  'Spent 450 on groceries',
+  'Fuel 1200 via UPI',
   'How much did I spend today?',
   'Am I on budget this month?',
+  'Monthly spending summary',
 ];
 
 export default function ChatScreen() {
@@ -40,7 +40,7 @@ export default function ChatScreen() {
       session_id: '',
       role: 'assistant',
       content:
-        "Greetings! I am JARVIS, your Personal Financial Intelligence Assistant for ARCOS. ⚡\n\nHow may I assist with your finances today? You can command me to log transactions, inspect budgets, or analyze spending:\n• 'I bought chai for 20'\n• 'How much did I spend today?'\n• 'Am I on budget this month?'",
+        "Greetings! I am JARVIS, your Personal Financial Intelligence Assistant for ARCOS. ⚡\n\nHow may I assist with your finances today? You can command me to log transactions, inspect budgets, or analyze spending:\n• 'Spent 450 on groceries'\n• 'How much did I spend today?'\n• 'Am I on budget this month?'",
       created_at: new Date().toISOString(),
     },
   ]);
@@ -169,18 +169,30 @@ export default function ChatScreen() {
         key={msg.id}
         className={`mb-4 flex-row ${isUser ? 'justify-end' : 'justify-start'}`}
       >
+        {!isUser && (
+          <View className="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 items-center justify-center mr-2 mt-1">
+            <Ionicons name="flash" size={13} color="#6C63FF" />
+          </View>
+        )}
         <View
           className={`rounded-2xl p-4 max-w-[85%] ${
             isUser
               ? 'bg-primary rounded-tr-sm'
-              : 'bg-card rounded-tl-sm border border-border'
+              : 'bg-card rounded-tl-sm border border-border shadow-sm'
           }`}
         >
-          <Text className="text-text text-sm leading-5">{msg.content}</Text>
+          {!isUser && (
+            <View className="flex-row items-center gap-1 mb-1.5 pb-1 border-b border-border/40">
+              <Text className="text-[10px] font-bold text-primary uppercase tracking-wider">JARVIS AI</Text>
+            </View>
+          )}
+          <Text className={`text-sm leading-5 ${isUser ? 'text-white font-medium' : 'text-text'}`}>
+            {msg.content}
+          </Text>
 
           {/* Interactive Pending Confirmation Card */}
           {pendingAction && (
-            <View className="mt-3 bg-background/80 rounded-xl p-3.5 border border-border">
+            <View className="mt-3 bg-background/90 rounded-xl p-3.5 border border-border">
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center">
                   <Text className="text-xl mr-2">💳</Text>
@@ -240,39 +252,44 @@ export default function ChatScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         {/* Header */}
-        <View className="px-4 py-3 border-b border-border flex-row items-center justify-between">
+        <View className="px-4 py-3 border-b border-border flex-row items-center justify-between bg-card">
           <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center mr-2.5">
-              <Text className="text-base">⚡</Text>
+            <View className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center mr-2.5 border border-primary/30">
+              <Ionicons name="sparkles" size={18} color="#6C63FF" />
             </View>
             <View>
               <Text className="text-lg font-bold text-text">JARVIS</Text>
-              <Text className="text-[10px] text-textSecondary uppercase tracking-wider font-semibold">
-                ARCOS Intelligence
+              <Text className="text-[10px] text-primary uppercase tracking-wider font-bold">
+                ARCOS Financial Intelligence
               </Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleNewChat} className="p-1">
-            <Ionicons name="refresh-outline" size={22} color="#6b7280" />
+          <TouchableOpacity
+            onPress={handleNewChat}
+            className="p-1.5 rounded-lg bg-background border border-border flex-row items-center gap-1"
+          >
+            <Ionicons name="refresh-outline" size={16} color="#6C63FF" />
+            <Text className="text-primary text-[11px] font-semibold">New Chat</Text>
           </TouchableOpacity>
         </View>
 
         {/* Quick Suggestion Chips */}
-        <View className="py-2 border-b border-border/50">
+        <View className="py-2.5 border-b border-border bg-card/50">
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3">
             {QUICK_PROMPTS.map((prompt, idx) => (
               <TouchableOpacity
                 key={idx}
-                className="bg-card border border-border px-3 py-1.5 rounded-full mr-2"
+                className="bg-card border border-primary/30 px-3.5 py-1.5 rounded-full mr-2 flex-row items-center gap-1.5"
                 onPress={() => handleSend(prompt)}
                 disabled={isLoading}
               >
-                <Text className="text-textSecondary text-xs">{prompt}</Text>
+                <Ionicons name="sparkles-outline" size={12} color="#6C63FF" />
+                <Text className="text-textSecondary text-xs font-medium">{prompt}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 from uuid import UUID
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.base import BaseRepository
 from app.models.investment import (
@@ -139,6 +139,15 @@ class InvestmentRepository:
         return res.scalars().first()
 
     async def delete_holding(self, holding: InvestmentHolding) -> bool:
+        # Also clean up any transactions for this asset and account
+        stmt = delete(InvestmentTransaction).where(
+            and_(
+                InvestmentTransaction.user_id == holding.user_id,
+                InvestmentTransaction.account_id == holding.account_id,
+                InvestmentTransaction.asset_id == holding.asset_id,
+            )
+        )
+        await self.session.execute(stmt)
         await self.session.delete(holding)
         await self.session.flush()
         return True

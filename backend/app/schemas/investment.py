@@ -169,3 +169,20 @@ class IPOAnalyzeResponse(BaseModel):
     ipo_name: str
     used_prompt_name: str
     analysis_markdown: str
+
+class UpcomingIPOItem(BaseModel):
+    id: str
+    company_name: str
+    symbol_tentative: Optional[str] = None
+    issue_size: str
+    price_band: str
+    open_date: str
+    close_date: str
+    listing_date: Optional[str] = None
+    status: str  # UPCOMING, OPEN, CLOSED
+    gmp_pct: Optional[float] = None
+    expected_listing_gain: Optional[str] = None
+    lot_size: int
+    category: str
+    sector: str
+    description: str

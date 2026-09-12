@@ -23,6 +23,20 @@ export interface SpendingInsight {
   icon: string;
 }
 
+export interface CategoryBreakdownItem {
+  category_name: string;
+  total_amount: number | string;
+  percentage: number;
+  color: string;
+  icon: string;
+}
+
+export interface DailyTrendItem {
+  date: string;
+  day_label: string;
+  total_amount: number | string;
+}
+
 export interface SpendingAnalytics {
   daily_average: number | string;
   weekly_average: number | string;
@@ -34,4 +48,13 @@ export interface SpendingAnalytics {
   top_merchants: MerchantSpend[];
   payment_methods: PaymentMethodSpend[];
   insights: SpendingInsight[];
+  category_breakdown?: CategoryBreakdownItem[];
+  daily_trends?: DailyTrendItem[];
+  period?: '1m' | '6m' | 'custom';
+  start_date?: string;
+  end_date?: string;
+  period_total?: number | string;
+  period_days?: number;
+  period_transaction_count?: number;
 }
+

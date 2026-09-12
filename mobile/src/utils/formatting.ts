@@ -1,19 +1,22 @@
 export function formatINR(amount: number): string {
   // Indian number system: 1,00,000
-  const formatted = amount.toLocaleString('en-IN', {
+  const num = Number(amount || 0);
+  const hasDecimals = num % 1 !== 0;
+  return num.toLocaleString('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: hasDecimals ? 2 : 0,
   });
-  return formatted;
 }
 
 export const formatCurrency = formatINR;
 
-export function formatPercentage(value: number, decimals: number = 1): string {
-  if (value === undefined || value === null || isNaN(value)) return '0.0%';
-  return `${value.toFixed(decimals)}%`;
+export function formatPercentage(value: number | string | null | undefined, decimals: number = 1): string {
+  if (value === undefined || value === null) return '0.0%';
+  const num = Number(value);
+  if (isNaN(num)) return '0.0%';
+  return `${num.toFixed(decimals)}%`;
 }
 
 export function getGreeting(): string {

@@ -154,3 +154,19 @@ export interface IPOAnalyzeResult {
   used_prompt_name: string;
   analysis_markdown: string;
 }
+
+export interface UpcomingIPOItem {
+  id: string;
+  company_name: string;
+  symbol?: string;
+  issue_size?: string;
+  price_band?: string;
+  open_date?: string;
+  close_date?: string;
+  listing_date?: string;
+  status: string;
+  expected_gmp?: string;
+  sector?: string;
+  description?: string;
+}
+
