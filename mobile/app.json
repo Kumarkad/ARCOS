@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Expense Tracker",
+    "name": "ARCOS",
     "slug": "arcos",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "scheme": "expense-tracker",
+    "scheme": "arcos",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -14,18 +14,19 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.starktechno.expensetracker"
+      "bundleIdentifier": "com.starktechno.arcos"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1a2e"
       },
-      "package": "com.starktechno.expensetracker"
+      "package": "com.starktechno.arcos"
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

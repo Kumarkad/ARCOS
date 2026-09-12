@@ -27,9 +27,14 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background justify-center px-6">
       <View className="items-center mb-10">
-        <Text className="text-4xl text-primary font-bold mb-2">💰</Text>
-        <Text className="text-3xl text-text font-bold">Expense Tracker</Text>
-        <Text className="text-textSecondary mt-2">Welcome back!</Text>
+        <Text className="text-4xl text-primary font-bold mb-2">⚡</Text>
+        <Text className="text-3xl text-text font-extrabold tracking-wider">ARCOS</Text>
+        <Text className="text-primary text-xs font-semibold uppercase tracking-widest mt-1">
+          Financial Intelligence System
+        </Text>
+        <Text className="text-textSecondary text-xs mt-2 text-center">
+          Your Personal Financial Intelligence System
+        </Text>
       </View>
 
       <View className="space-y-4 mb-8">

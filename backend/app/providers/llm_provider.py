@@ -225,6 +225,6 @@ class LLMProvider:
 
         # Default conversational reply
         return {
-            "content": "I'm your personal finance assistant! You can say things like:\n• 'I bought chai for 20'\n• 'Spent 1200 on petrol'\n• 'How much did I spend today?'\n• 'Am I on budget this month?'",
+            "content": "Greetings! I am JARVIS, your AI assistant for ARCOS — Your Personal Financial Intelligence System.\n\nYou can ask me things like:\n• 'I bought chai for 20'\n• 'Spent 1200 on petrol'\n• 'How much did I spend today?'\n• 'Am I on budget this month?'",
             "tool_calls": None
         }

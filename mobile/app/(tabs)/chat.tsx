@@ -40,7 +40,7 @@ export default function ChatScreen() {
       session_id: '',
       role: 'assistant',
       content:
-        "Hi! I'm your personal finance assistant. 💬\n\nYou can talk naturally to log expenses, check spending, or ask about your budgets. Try saying:\n• 'I bought chai for 20'\n• 'How much did I spend today?'",
+        "Greetings! I am JARVIS, your Personal Financial Intelligence Assistant for ARCOS. ⚡\n\nHow may I assist with your finances today? You can command me to log transactions, inspect budgets, or analyze spending:\n• 'I bought chai for 20'\n• 'How much did I spend today?'\n• 'Am I on budget this month?'",
       created_at: new Date().toISOString(),
     },
   ]);
@@ -153,7 +153,7 @@ export default function ChatScreen() {
         session_id: '',
         role: 'assistant',
         content:
-          "Starting a new conversation! What would you like to track or check today? 💬",
+          "JARVIS session initialized. All financial intelligence systems online. How can I assist you today?",
         created_at: new Date().toISOString(),
       },
     ]);
@@ -247,10 +247,15 @@ export default function ChatScreen() {
         {/* Header */}
         <View className="px-4 py-3 border-b border-border flex-row items-center justify-between">
           <View className="flex-row items-center">
-            <View className="w-8 h-8 rounded-full bg-primary/20 items-center justify-center mr-2.5">
-              <Text className="text-base">🤖</Text>
+            <View className="w-9 h-9 rounded-full bg-primary/20 items-center justify-center mr-2.5">
+              <Text className="text-base">⚡</Text>
             </View>
-            <Text className="text-lg font-bold text-text">AI Finance Assistant</Text>
+            <View>
+              <Text className="text-lg font-bold text-text">JARVIS</Text>
+              <Text className="text-[10px] text-textSecondary uppercase tracking-wider font-semibold">
+                ARCOS Intelligence
+              </Text>
+            </View>
           </View>
           <TouchableOpacity onPress={handleNewChat} className="p-1">
             <Ionicons name="refresh-outline" size={22} color="#6b7280" />
@@ -295,7 +300,7 @@ export default function ChatScreen() {
           <View className="flex-row items-center bg-card rounded-full px-3 py-1 border border-border">
             <TextInput
               className="flex-1 px-3 py-2 text-text text-sm"
-              placeholder="Ask anything or log an expense..."
+              placeholder="Ask JARVIS or log an expense..."
               placeholderTextColor="#6b7280"
               value={inputMessage}
               onChangeText={setInputMessage}

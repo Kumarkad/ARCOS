@@ -20,6 +20,7 @@ settings = get_settings()
 
 app = FastAPI(
     title=settings.APP_NAME,
+    description="ARCOS — Your Personal Financial Intelligence System",
     version="1.0.0"
 )
 

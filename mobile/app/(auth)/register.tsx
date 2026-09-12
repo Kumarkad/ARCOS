@@ -33,9 +33,11 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background justify-center px-6">
       <View className="items-center mb-8">
-        <Text className="text-4xl text-primary font-bold mb-2">💰</Text>
-        <Text className="text-3xl text-text font-bold">Create Account</Text>
-        <Text className="text-textSecondary mt-2">Start tracking today</Text>
+        <Text className="text-4xl text-primary font-bold mb-2">⚡</Text>
+        <Text className="text-3xl text-text font-extrabold tracking-wider">Join ARCOS</Text>
+        <Text className="text-textSecondary text-xs mt-1 text-center">
+          Your Personal Financial Intelligence System
+        </Text>
       </View>
 
       <View className="space-y-4 mb-8">

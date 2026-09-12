@@ -43,7 +43,10 @@ export default function HomeScreen() {
         {/* User Greeting & Header */}
         <View className="flex-row justify-between items-center mb-6">
           <View>
-            <Text className="text-textSecondary text-sm font-medium">{greeting},</Text>
+            <View className="flex-row items-center mb-1">
+              <Text className="text-primary text-xs font-bold tracking-wider uppercase">ARCOS</Text>
+              <Text className="text-textSecondary text-xs"> • {greeting}</Text>
+            </View>
             <Text className="text-text text-2xl font-bold">{user?.full_name || 'User'} 👋</Text>
           </View>
           <TouchableOpacity
@@ -87,7 +90,7 @@ export default function HomeScreen() {
 
         {/* Quick Add Expense Action Card */}
         <TouchableOpacity
-          className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+          className="bg-primary/10 border border-primary/30 rounded-2xl p-4 mb-3 flex-row items-center justify-between"
           activeOpacity={0.8}
           onPress={() => router.push('/(tabs)/expenses/add')}
         >
@@ -98,6 +101,29 @@ export default function HomeScreen() {
             <View>
               <Text className="text-text font-bold text-base">Quick Add Expense</Text>
               <Text className="text-textSecondary text-xs">Log chai, food, fuel or travel</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#6C63FF" />
+        </TouchableOpacity>
+
+        {/* JARVIS Assistant Shortcut Card */}
+        <TouchableOpacity
+          className="bg-card border border-primary/30 rounded-2xl p-4 mb-4 flex-row items-center justify-between"
+          activeOpacity={0.8}
+          onPress={() => router.push('/(tabs)/chat')}
+        >
+          <View className="flex-row items-center space-x-3">
+            <View className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 items-center justify-center mr-3">
+              <Ionicons name="sparkles" size={20} color="#6C63FF" />
+            </View>
+            <View>
+              <View className="flex-row items-center">
+                <Text className="text-text font-bold text-base">JARVIS Assistant</Text>
+                <View className="ml-2 bg-primary/20 px-1.5 py-0.5 rounded">
+                  <Text className="text-primary text-[10px] font-bold">AI</Text>
+                </View>
+              </View>
+              <Text className="text-textSecondary text-xs">Your Personal Financial Intelligence System</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#6C63FF" />

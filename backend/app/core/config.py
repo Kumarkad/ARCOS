@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     CORS_ORIGINS: list[str]
     ENVIRONMENT: str = "development"
-    APP_NAME: str = "Expense Tracker API"
+    APP_NAME: str = "ARCOS API"
     API_V1_PREFIX: str = "/api/v1"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

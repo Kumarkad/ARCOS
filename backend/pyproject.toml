@@ -1,7 +1,7 @@
 [project]
-name = "expense-tracker-backend"
+name = "arcos-backend"
 version = "1.0.0"
-description = "Personal Finance, Investment & Bike Tracker — FastAPI Backend"
+description = "ARCOS: Your Personal Financial Intelligence System — FastAPI Backend"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
