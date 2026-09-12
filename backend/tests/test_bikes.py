@@ -16,12 +16,9 @@ async def test_bike_lifecycle_and_mileage_calculation(db_session: AsyncSession, 
     repo = BikeRepository(db_session)
     service = BikeService(repo, session=db_session)
 
-    # 1. List bikes auto-creates default bike
+    # 1. Initially no bikes exist until added
     bikes = await service.list_bikes(test_user.id)
-    assert len(bikes) == 1
-    bike = bikes[0]
-    assert bike.name == "My Bike"
-    assert bike.initial_odometer == Decimal("0.0")
+    assert len(bikes) == 0
 
     # Update bike details
     bike_custom = await service.create_bike(
@@ -123,3 +120,9 @@ async def test_bike_lifecycle_and_mileage_calculation(db_session: AsyncSession, 
     assert len(dash.reminders) >= 1
     assert dash.reminders[0].severity == "WARNING"
     assert dash.reminders[0].due_km_remaining == Decimal("150.0")
+
+    # 7. Delete bike
+    deleted = await service.delete_bike(test_user.id, bike_custom.id)
+    assert deleted is True
+    bikes_after_delete = await service.list_bikes(test_user.id)
+    assert len(bikes_after_delete) == 0

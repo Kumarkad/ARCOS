@@ -18,10 +18,19 @@ from app.api.export import router as export_router
 
 settings = get_settings()
 
+from contextlib import asynccontextmanager
+from app.db.session import init_db
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="ARCOS — Your Personal Financial Intelligence System",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

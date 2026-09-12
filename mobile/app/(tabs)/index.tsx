@@ -42,19 +42,33 @@ export default function HomeScreen() {
       >
         {/* User Greeting & Header */}
         <View className="flex-row justify-between items-center mb-6">
-          <View>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/profile')}
+            activeOpacity={0.7}
+          >
             <View className="flex-row items-center mb-1">
               <Text className="text-primary text-xs font-bold tracking-wider uppercase">ARCOS</Text>
               <Text className="text-textSecondary text-xs"> • {greeting}</Text>
             </View>
-            <Text className="text-text text-2xl font-bold">{user?.full_name || 'User'} 👋</Text>
-          </View>
-          <TouchableOpacity
-            className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center"
-            onPress={() => router.push('/(tabs)/expenses/add')}
-          >
-            <Ionicons name="add" size={24} color="#6C63FF" />
+            <View className="flex-row items-center gap-1">
+              <Text className="text-text text-2xl font-bold">{user?.full_name || 'User'} 👋</Text>
+              <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
+            </View>
           </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              className="w-10 h-10 rounded-full bg-card border border-border items-center justify-center"
+              onPress={() => router.push('/(tabs)/profile')}
+            >
+              <Ionicons name="person-outline" size={18} color="#6C63FF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="w-10 h-10 rounded-full bg-primary items-center justify-center"
+              onPress={() => router.push('/(tabs)/expenses/add')}
+            >
+              <Ionicons name="add" size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Quick Spending Overview Cards */}

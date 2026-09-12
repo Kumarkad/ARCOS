@@ -21,8 +21,11 @@ class BikeUpdate(BaseModel):
     model: Optional[str] = Field(None, min_length=1, max_length=50)
     year: Optional[int] = Field(None, ge=1970, le=2100)
     registration_number: Optional[str] = Field(None, max_length=20)
+    initial_odometer: Optional[Decimal] = Field(None, ge=0)
+    current_odometer: Optional[Decimal] = Field(None, ge=0)
     fuel_tank_capacity: Optional[Decimal] = Field(None, gt=0)
     fuel_type: Optional[str] = Field(None, max_length=20)
+    is_primary: Optional[bool] = None
 
 class BikeResponse(BaseModel):
     id: UUID

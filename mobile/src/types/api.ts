@@ -24,3 +24,6 @@ export interface APIResponse<T> {
   data: T;
   message?: string;
 }
+
+export type ApiResponse<T> = APIResponse<T>;
+

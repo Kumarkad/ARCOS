@@ -1,5 +1,5 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { API_BASE_URL } from '../utils/constants';
 
 const apiClient = axios.create({
@@ -9,7 +9,7 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('access_token');
+    const token = await storage.getItemAsync('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -29,7 +29,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const refreshToken = await SecureStore.getItemAsync('refresh_token');
+        const refreshToken = await storage.getItemAsync('refresh_token');
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
@@ -40,13 +40,13 @@ apiClient.interceptors.response.use(
         
         const newAccessToken = response.data.data?.access_token || response.data.access_token;
         if (newAccessToken) {
-          await SecureStore.setItemAsync('access_token', newAccessToken);
+          await storage.setItemAsync('access_token', newAccessToken);
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           return axios(originalRequest);
         }
       } catch (refreshError) {
-        await SecureStore.deleteItemAsync('access_token');
-        await SecureStore.deleteItemAsync('refresh_token');
+        await storage.deleteItemAsync('access_token');
+        await storage.deleteItemAsync('refresh_token');
         // Let the caller handle the redirection to login by catching this error
       }
     }

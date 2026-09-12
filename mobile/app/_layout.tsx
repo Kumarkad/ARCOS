@@ -41,8 +41,10 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Slot />
-      <StatusBar style="light" />
+      <View style={{ flex: 1, backgroundColor: '#0f0f23' }}>
+        <Slot />
+        <StatusBar style="light" />
+      </View>
     </QueryClientProvider>
   );
 }

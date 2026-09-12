@@ -27,20 +27,6 @@ class BikeService:
 
     async def list_bikes(self, user_id: UUID) -> List[BikeResponse]:
         bikes = await self.repo.list_bikes(user_id)
-        if not bikes:
-            # Auto-create initial bike
-            default_bike = await self.repo.create_bike(
-                user_id,
-                BikeCreate(
-                    name="My Bike",
-                    make="Royal Enfield",
-                    model="Hunter 350",
-                    initial_odometer=Decimal("0.0"),
-                    fuel_tank_capacity=Decimal("13.0"),
-                    fuel_type="PETROL",
-                ),
-            )
-            bikes = [default_bike]
         return [BikeResponse.model_validate(b) for b in bikes]
 
     async def get_bike(self, user_id: UUID, bike_id: UUID) -> Bike:

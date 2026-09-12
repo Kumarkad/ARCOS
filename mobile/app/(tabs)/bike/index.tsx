@@ -21,13 +21,27 @@ export default function BikeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<BikeDashboardSummary | null>(null);
+  const [allBikes, setAllBikes] = useState<Bike[]>([]);
+  const [selectedBikeId, setSelectedBikeId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'fuel' | 'maintenance'>('fuel');
 
   // Modals state
   const [fuelModalVisible, setFuelModalVisible] = useState(false);
   const [maintModalVisible, setMaintModalVisible] = useState(false);
   const [expModalVisible, setExpModalVisible] = useState(false);
+  const [addBikeModalVisible, setAddBikeModalVisible] = useState(false);
+  const [editBikeModalVisible, setEditBikeModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Bike Form state (for Add / Edit)
+  const [formBikeName, setFormBikeName] = useState('');
+  const [formBikeMake, setFormBikeMake] = useState('');
+  const [formBikeModel, setFormBikeModel] = useState('');
+  const [formBikeYear, setFormBikeYear] = useState('');
+  const [formBikeRegNum, setFormBikeRegNum] = useState('');
+  const [formBikeOdo, setFormBikeOdo] = useState('');
+  const [formBikeTankCapacity, setFormBikeTankCapacity] = useState('');
+  const [formBikeFuelType, setFormBikeFuelType] = useState('PETROL');
 
   // Fuel Form
   const [fuelDate, setFuelDate] = useState(new Date().toISOString().split('T')[0]);
@@ -51,28 +65,34 @@ export default function BikeScreen() {
   const [expAmount, setExpAmount] = useState('');
   const [expNotes, setExpNotes] = useState('');
 
-  const loadDashboard = useCallback(async () => {
+  const loadDashboard = useCallback(async (targetBikeId?: string) => {
     try {
       const bikes = await bikeApi.getBikes();
-      if (bikes.length > 0) {
-        const primaryBike = bikes.find((b) => b.is_primary) || bikes[0];
-        const data = await bikeApi.getDashboard(primaryBike.id);
+      setAllBikes(bikes || []);
+      if (bikes && bikes.length > 0) {
+        const bikeToLoad = targetBikeId
+          ? bikes.find((b) => b.id === targetBikeId) || bikes[0]
+          : (selectedBikeId ? bikes.find((b) => b.id === selectedBikeId) : null) ||
+            bikes.find((b) => b.is_primary) ||
+            bikes[0];
+
+        setSelectedBikeId(bikeToLoad.id);
+        const data = await bikeApi.getDashboard(bikeToLoad.id);
         setDashboard(data);
-        if (!fuelOdo) {
-          setFuelOdo(String(data.bike.current_odometer));
-        }
-        if (!maintOdo) {
-          setMaintOdo(String(data.bike.current_odometer));
-        }
+        setFuelOdo(String(data.bike.current_odometer));
+        setMaintOdo(String(data.bike.current_odometer));
+      } else {
+        setDashboard(null);
+        setSelectedBikeId(null);
       }
     } catch (err) {
       console.error('Failed to load bike dashboard:', err);
     }
-  }, [fuelOdo, maintOdo]);
+  }, [selectedBikeId]);
 
   useEffect(() => {
     loadDashboard().finally(() => setLoading(false));
-  }, [loadDashboard]);
+  }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -164,6 +184,87 @@ export default function BikeScreen() {
     }
   };
 
+  const handleOpenAddBike = () => {
+    setFormBikeName('');
+    setFormBikeMake('');
+    setFormBikeModel('');
+    setFormBikeYear(new Date().getFullYear().toString());
+    setFormBikeRegNum('');
+    setFormBikeOdo('0');
+    setFormBikeTankCapacity('13');
+    setFormBikeFuelType('PETROL');
+    setAddBikeModalVisible(true);
+  };
+
+  const handleOpenEditBike = () => {
+    if (!dashboard?.bike) return;
+    const b = dashboard.bike;
+    setFormBikeName(b.name || '');
+    setFormBikeMake(b.make || '');
+    setFormBikeModel(b.model || '');
+    setFormBikeYear(b.year ? String(b.year) : '');
+    setFormBikeRegNum(b.registration_number || '');
+    setFormBikeOdo(String(b.current_odometer || 0));
+    setFormBikeTankCapacity(b.fuel_tank_capacity ? String(b.fuel_tank_capacity) : '');
+    setFormBikeFuelType(b.fuel_type || 'PETROL');
+    setEditBikeModalVisible(true);
+  };
+
+  const handleSaveNewBike = async () => {
+    if (!formBikeName.trim() || !formBikeMake.trim() || !formBikeModel.trim()) {
+      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make, and Model.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = await bikeApi.createBike({
+        name: formBikeName.trim(),
+        make: formBikeMake.trim(),
+        model: formBikeModel.trim(),
+        year: formBikeYear ? parseInt(formBikeYear, 10) : undefined,
+        registration_number: formBikeRegNum.trim() || undefined,
+        initial_odometer: formBikeOdo ? parseFloat(formBikeOdo) : 0,
+        fuel_tank_capacity: formBikeTankCapacity ? parseFloat(formBikeTankCapacity) : undefined,
+        fuel_type: formBikeFuelType,
+      });
+      setAddBikeModalVisible(false);
+      await loadDashboard(created.id);
+      Alert.alert('Success', `${created.make} ${created.model} added!`);
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to add vehicle');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveEditBike = async () => {
+    if (!dashboard?.bike.id) return;
+    if (!formBikeName.trim() || !formBikeMake.trim() || !formBikeModel.trim()) {
+      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make, and Model.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await bikeApi.updateBike(dashboard.bike.id, {
+        name: formBikeName.trim(),
+        make: formBikeMake.trim(),
+        model: formBikeModel.trim(),
+        year: formBikeYear ? parseInt(formBikeYear, 10) : undefined,
+        registration_number: formBikeRegNum.trim() || undefined,
+        current_odometer: formBikeOdo ? parseFloat(formBikeOdo) : undefined,
+        fuel_tank_capacity: formBikeTankCapacity ? parseFloat(formBikeTankCapacity) : undefined,
+        fuel_type: formBikeFuelType,
+      });
+      setEditBikeModalVisible(false);
+      await loadDashboard(dashboard.bike.id);
+      Alert.alert('Success', 'Vehicle updated successfully!');
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to update vehicle');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
@@ -175,19 +276,197 @@ export default function BikeScreen() {
 
   const bike = dashboard?.bike;
 
+  if (!bike) {
+    return (
+      <SafeAreaView className="flex-1 bg-background">
+        <View className="px-4 py-3 border-b border-border bg-card flex-row justify-between items-center">
+          <Text className="text-xl font-bold text-text">Vehicle Tracker</Text>
+          <TouchableOpacity
+            onPress={handleOpenAddBike}
+            className="bg-primary px-3 py-1.5 rounded-full flex-row items-center gap-1"
+          >
+            <Ionicons name="add" size={16} color="#ffffff" />
+            <Text className="text-white text-xs font-bold">Add Vehicle</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View className="flex-1 justify-center items-center p-6">
+          <View className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 items-center justify-center mb-4">
+            <Ionicons name="bicycle" size={40} color="#6366f1" />
+          </View>
+          <Text className="text-xl font-bold text-text text-center">No Vehicle Registered</Text>
+          <Text className="text-textSecondary text-xs text-center mt-2 mb-6">
+            Register your motorcycle or car to start tracking mileage, fuel refills, and maintenance reminders!
+          </Text>
+          <TouchableOpacity
+            onPress={handleOpenAddBike}
+            className="bg-primary px-5 py-3 rounded-xl flex-row items-center gap-2"
+          >
+            <Ionicons name="add-circle-outline" size={18} color="#ffffff" />
+            <Text className="text-white font-bold text-sm">Add Your Vehicle</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ADD BIKE MODAL */}
+        <Modal visible={addBikeModalVisible} animationType="slide" transparent>
+          <View className="flex-1 justify-end bg-black/70">
+            <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-text">Add Vehicle</Text>
+                <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+                <TextInput
+                  value={formBikeName}
+                  onChangeText={setFormBikeName}
+                  placeholder="e.g. My Commuter or Hunter 350"
+                  placeholderTextColor="#64748b"
+                  className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                />
+                <View className="flex-row gap-2 mb-3">
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
+                    <TextInput
+                      value={formBikeMake}
+                      onChangeText={setFormBikeMake}
+                      placeholder="e.g. Royal Enfield"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Model *</Text>
+                    <TextInput
+                      value={formBikeModel}
+                      onChangeText={setFormBikeModel}
+                      placeholder="e.g. Hunter 350"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                </View>
+                <View className="flex-row gap-2 mb-3">
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                    <TextInput
+                      value={formBikeYear}
+                      onChangeText={setFormBikeYear}
+                      keyboardType="numeric"
+                      placeholder="e.g. 2024"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                    <TextInput
+                      value={formBikeRegNum}
+                      onChangeText={setFormBikeRegNum}
+                      placeholder="e.g. MH 02 AB 1234"
+                      placeholderTextColor="#64748b"
+                      autoCapitalize="characters"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                </View>
+                <View className="flex-row gap-2 mb-3">
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
+                    <TextInput
+                      value={formBikeOdo}
+                      onChangeText={setFormBikeOdo}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                    <TextInput
+                      value={formBikeTankCapacity}
+                      onChangeText={setFormBikeTankCapacity}
+                      keyboardType="numeric"
+                      placeholder="13"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                    />
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={handleSaveNewBike}
+                  disabled={submitting}
+                  className="bg-primary py-3 rounded-xl items-center mt-2 mb-4"
+                >
+                  {submitting ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Text className="text-white font-bold text-base">Save Vehicle</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
-      <View className="px-4 py-3 border-b border-border bg-card flex-row justify-between items-center">
-        <View>
-          <Text className="text-2xl font-bold text-text">{bike?.name || 'My Bike'}</Text>
-          <Text className="text-textSecondary text-xs">
-            {bike?.make} {bike?.model} {bike?.registration_number ? `• ${bike.registration_number}` : ''}
-          </Text>
+      <View className="px-4 py-3 border-b border-border bg-card">
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1 mr-2">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-2xl font-bold text-text">{bike?.name || 'My Bike'}</Text>
+              <TouchableOpacity
+                onPress={handleOpenEditBike}
+                className="w-7 h-7 rounded-full bg-primary/20 items-center justify-center"
+              >
+                <Ionicons name="pencil" size={13} color="#6366f1" />
+              </TouchableOpacity>
+            </View>
+            <Text className="text-textSecondary text-xs mt-0.5">
+              {bike?.make} {bike?.model} {bike?.registration_number ? `• ${bike.registration_number}` : ''}
+            </Text>
+          </View>
+
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={handleOpenAddBike}
+              className="w-8 h-8 rounded-full bg-card border border-border items-center justify-center"
+            >
+              <Ionicons name="add" size={18} color="#6366f1" />
+            </TouchableOpacity>
+            <View className="bg-primary/20 px-2.5 py-1 rounded-full border border-primary">
+              <Text className="text-primary text-xs font-bold">{bike?.fuel_type || 'PETROL'}</Text>
+            </View>
+          </View>
         </View>
-        <View className="bg-primary/20 px-2.5 py-1 rounded-full border border-primary">
-          <Text className="text-primary text-xs font-bold">{bike?.fuel_type || 'PETROL'}</Text>
-        </View>
+
+        {/* Multi-vehicle switcher */}
+        {allBikes.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mt-2 pt-2 border-t border-border/40">
+            {allBikes.map((b) => (
+              <TouchableOpacity
+                key={b.id}
+                onPress={() => loadDashboard(b.id)}
+                className={`px-3 py-1 rounded-full border mr-2 flex-row items-center gap-1 ${
+                  b.id === bike.id ? 'bg-primary border-primary' : 'bg-background border-border'
+                }`}
+              >
+                <Ionicons name="bicycle" size={12} color={b.id === bike.id ? '#ffffff' : '#9ca3af'} />
+                <Text className={`text-xs font-medium ${b.id === bike.id ? 'text-white' : 'text-textSecondary'}`}>
+                  {b.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       <ScrollView
@@ -679,6 +958,278 @@ export default function BikeScreen() {
                 <Text className="text-white font-bold text-base">Save Vehicle Expense</Text>
               )}
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* EDIT VEHICLE MODAL */}
+      <Modal visible={editBikeModalVisible} animationType="slide" transparent>
+        <View className="flex-1 justify-end bg-black/70">
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="pencil" size={20} color="#6366f1" />
+                <Text className="text-xl font-bold text-text">Edit Vehicle Details</Text>
+              </View>
+              <TouchableOpacity onPress={() => setEditBikeModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#9ca3af" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+              <TextInput
+                value={formBikeName}
+                onChangeText={setFormBikeName}
+                placeholder="e.g. My Bike"
+                placeholderTextColor="#64748b"
+                className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+              />
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
+                  <TextInput
+                    value={formBikeMake}
+                    onChangeText={setFormBikeMake}
+                    placeholder="e.g. Royal Enfield"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Model *</Text>
+                  <TextInput
+                    value={formBikeModel}
+                    onChangeText={setFormBikeModel}
+                    placeholder="e.g. Hunter 350"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                  <TextInput
+                    value={formBikeYear}
+                    onChangeText={setFormBikeYear}
+                    keyboardType="numeric"
+                    placeholder="e.g. 2024"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                  <TextInput
+                    value={formBikeRegNum}
+                    onChangeText={setFormBikeRegNum}
+                    placeholder="e.g. MH 02 AB 1234"
+                    placeholderTextColor="#64748b"
+                    autoCapitalize="characters"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Current Odometer (km)</Text>
+                  <TextInput
+                    value={formBikeOdo}
+                    onChangeText={setFormBikeOdo}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                  <TextInput
+                    value={formBikeTankCapacity}
+                    onChangeText={setFormBikeTankCapacity}
+                    keyboardType="numeric"
+                    placeholder="13"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
+                <View className="flex-row gap-2">
+                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => setFormBikeFuelType(type)}
+                      className={`flex-1 py-2 rounded-lg border items-center ${
+                        formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                        }`}
+                      >
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleSaveEditBike}
+                disabled={submitting}
+                className="bg-primary py-3 rounded-xl items-center mb-4"
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text className="text-white font-bold text-base">Save Vehicle Changes</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ADD VEHICLE MODAL (Secondary) */}
+      <Modal visible={addBikeModalVisible} animationType="slide" transparent>
+        <View className="flex-1 justify-end bg-black/70">
+          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="add-circle" size={22} color="#6366f1" />
+                <Text className="text-xl font-bold text-text">Add Vehicle</Text>
+              </View>
+              <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#9ca3af" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+              <TextInput
+                value={formBikeName}
+                onChangeText={setFormBikeName}
+                placeholder="e.g. Daily Commuter"
+                placeholderTextColor="#64748b"
+                className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+              />
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
+                  <TextInput
+                    value={formBikeMake}
+                    onChangeText={setFormBikeMake}
+                    placeholder="e.g. Royal Enfield"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Model *</Text>
+                  <TextInput
+                    value={formBikeModel}
+                    onChangeText={setFormBikeModel}
+                    placeholder="e.g. Hunter 350"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                  <TextInput
+                    value={formBikeYear}
+                    onChangeText={setFormBikeYear}
+                    keyboardType="numeric"
+                    placeholder="e.g. 2024"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                  <TextInput
+                    value={formBikeRegNum}
+                    onChangeText={setFormBikeRegNum}
+                    placeholder="e.g. MH 02 AB 1234"
+                    placeholderTextColor="#64748b"
+                    autoCapitalize="characters"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="flex-row gap-2 mb-3">
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
+                  <TextInput
+                    value={formBikeOdo}
+                    onChangeText={setFormBikeOdo}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                  <TextInput
+                    value={formBikeTankCapacity}
+                    onChangeText={setFormBikeTankCapacity}
+                    keyboardType="numeric"
+                    placeholder="13"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                  />
+                </View>
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
+                <View className="flex-row gap-2">
+                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => setFormBikeFuelType(type)}
+                      className={`flex-1 py-2 rounded-lg border items-center ${
+                        formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                        }`}
+                      >
+                        {type}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleSaveNewBike}
+                disabled={submitting}
+                className="bg-primary py-3 rounded-xl items-center mb-4"
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#ffffff" />
+                ) : (
+                  <Text className="text-white font-bold text-base">Add Vehicle</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

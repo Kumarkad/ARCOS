@@ -54,6 +54,15 @@ async def update_bike(
     bike = await service.update_bike(user.id, bike_id, data)
     return APIResponse(data=bike, message="Bike updated successfully")
 
+@router.delete("/{bike_id}", response_model=APIResponse[bool])
+async def delete_bike(
+    bike_id: UUID,
+    user: User = Depends(get_current_user),
+    service: BikeService = Depends(get_bike_service),
+):
+    result = await service.delete_bike(user.id, bike_id)
+    return APIResponse(data=result, message="Bike deleted successfully")
+
 @router.get("/{bike_id}/dashboard", response_model=APIResponse[BikeDashboardSummary])
 async def get_dashboard(
     bike_id: UUID,

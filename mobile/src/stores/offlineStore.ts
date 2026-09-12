@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { ExpenseCreate } from '../types/expense';
 import { expensesApi } from '../api/expenses';
 
@@ -27,7 +27,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
 
   loadQueue: async () => {
     try {
-      const stored = await SecureStore.getItemAsync(QUEUE_STORAGE_KEY);
+      const stored = await storage.getItemAsync(QUEUE_STORAGE_KEY);
       if (stored) {
         set({ pendingQueue: JSON.parse(stored) });
       }
@@ -44,7 +44,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
     const updated = [...get().pendingQueue, itemWithKey];
     set({ pendingQueue: updated });
     try {
-      await SecureStore.setItemAsync(QUEUE_STORAGE_KEY, JSON.stringify(updated));
+      await storage.setItemAsync(QUEUE_STORAGE_KEY, JSON.stringify(updated));
     } catch {
       // ignore
     }
@@ -59,7 +59,7 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
       const response = await expensesApi.bulkCreateExpenses(queue);
       if (response.success) {
         set({ pendingQueue: [] });
-        await SecureStore.deleteItemAsync(QUEUE_STORAGE_KEY);
+        await storage.deleteItemAsync(QUEUE_STORAGE_KEY);
         return response.data.length;
       }
       return 0;

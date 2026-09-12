@@ -13,7 +13,11 @@ class Settings(BaseSettings):
     APP_NAME: str = "ARCOS API"
     API_V1_PREFIX: str = "/api/v1"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # Optional AI Providers (Groq / Gemini)
+    GROQ_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 @lru_cache
 def get_settings() -> Settings:

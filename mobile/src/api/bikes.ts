@@ -36,6 +36,11 @@ export const bikeApi = {
     return res.data.data;
   },
 
+  deleteBike: async (bikeId: string): Promise<boolean> => {
+    const res = await api.delete<ApiResponse<boolean>>(`/bikes/${bikeId}`);
+    return res.data.data;
+  },
+
   getDashboard: async (bikeId: string): Promise<BikeDashboardSummary> => {
     const res = await api.get<ApiResponse<BikeDashboardSummary>>(`/bikes/${bikeId}/dashboard`);
     return res.data.data;
