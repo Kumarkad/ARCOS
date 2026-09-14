@@ -25,6 +25,8 @@ import {
   UpcomingIPOItem,
 } from '../../../src/types/investment';
 import { formatCurrency, formatPercentage } from '../../../src/utils/formatting';
+import { PortfolioLineChart } from '../../../src/components/charts/PortfolioLineChart';
+import { AssetAllocationDonutChart } from '../../../src/components/charts/AssetAllocationDonutChart';
 
 type Segment = 'Portfolio' | 'Suggestions' | 'Watchlist' | 'IPO';
 
@@ -576,6 +578,15 @@ export default function InvestmentsScreen() {
           {/* SEGMENT 1: PORTFOLIO */}
           {activeSegment === 'Portfolio' && (
             <View className="gap-4 pb-12">
+              {/* Portfolio Growth Line Chart */}
+              <PortfolioLineChart
+                currentValue={portfolio?.total_current_value || 580000}
+                gainPercent={portfolio?.total_unrealized_pnl_pct || 12.4}
+              />
+
+              {/* Asset Allocation Donut Chart */}
+              <AssetAllocationDonutChart />
+
               {/* Portfolio Summary Card */}
               <View className="bg-card p-4 rounded-xl border border-border">
                 <Text className="text-textSecondary text-xs font-medium">TOTAL PORTFOLIO VALUE</Text>

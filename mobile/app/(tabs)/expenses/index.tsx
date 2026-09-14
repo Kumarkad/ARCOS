@@ -16,6 +16,8 @@ import { categoriesApi } from '../../../src/api/categories';
 import { Expense } from '../../../src/types/expense';
 import { formatINR } from '../../../src/utils/formatting';
 import { useOfflineStore } from '../../../src/stores/offlineStore';
+import { SpendingLineChart } from '../../../src/components/charts/SpendingLineChart';
+import { SpendingDonutChart } from '../../../src/components/charts/SpendingDonutChart';
 
 export default function ExpensesScreen() {
   const router = useRouter();
@@ -100,7 +102,10 @@ export default function ExpensesScreen() {
     <SafeAreaView className="flex-1 bg-background relative" edges={['top']}>
       {/* Header */}
       <View className="px-4 py-3 border-b border-border flex-row justify-between items-center">
-        <Text className="text-2xl font-bold text-text">Expenses</Text>
+        <View>
+          <Text className="text-2xl font-bold text-text">Expenses & Analytics 📊</Text>
+          <Text className="text-textSecondary text-xs">Spending Velocity & Breakdown</Text>
+        </View>
         {pendingQueue.length > 0 && (
           <TouchableOpacity
             className="flex-row items-center bg-warning/20 px-3 py-1.5 rounded-full"
@@ -121,67 +126,79 @@ export default function ExpensesScreen() {
         )}
       </View>
 
-      {/* Category Filter Pills */}
-      <View className="py-2.5">
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={[{ id: '', name: 'All' }, ...categories]}
-          keyExtractor={(item) => item.id || 'all'}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
-          renderItem={({ item }) => {
-            const isSelected = item.id === (selectedCategoryId || '');
-            return (
-              <TouchableOpacity
-                className={`px-4 py-2 rounded-full mr-2 border ${
-                  isSelected
-                    ? 'bg-primary border-primary'
-                    : 'bg-card border-border'
-                }`}
-                onPress={() => setSelectedCategoryId(item.id || null)}
-              >
-                <Text
-                  className={`text-xs font-semibold ${
-                    isSelected ? 'text-white' : 'text-textSecondary'
-                  }`}
-                >
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </View>
+      {/* Main Content List */}
+      <FlatList
+        data={expenses}
+        keyExtractor={(item) => item.id}
+        renderItem={renderExpenseItem}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 90 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={handleRefresh}
+            tintColor="#6C63FF"
+            colors={['#6C63FF']}
+          />
+        }
+        ListHeaderComponent={
+          <View className="mb-3">
+            {/* Spending Line Chart */}
+            <SpendingLineChart />
 
-      {/* Expenses List */}
-      {isLoading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#6C63FF" />
-        </View>
-      ) : expenses.length === 0 ? (
-        <View className="flex-1 justify-center items-center px-6">
-          <Ionicons name="receipt-outline" size={64} color="#6b7280" className="mb-4" />
-          <Text className="text-text font-bold text-lg mb-1">No expenses yet</Text>
-          <Text className="text-textSecondary text-center text-sm">
-            Tap the + button below to log your first expense.
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={expenses}
-          keyExtractor={(item) => item.id}
-          renderItem={renderExpenseItem}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 90 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={handleRefresh}
-              tintColor="#6C63FF"
-              colors={['#6C63FF']}
-            />
-          }
-        />
-      )}
+            {/* Spending Donut Chart */}
+            <SpendingDonutChart />
+
+            {/* Category Filter Pills */}
+            <View className="mb-3">
+              <Text className="text-text font-bold text-sm mb-2">Category Filter</Text>
+              <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={[{ id: '', name: 'All' }, ...categories]}
+                keyExtractor={(item) => item.id || 'all'}
+                renderItem={({ item }) => {
+                  const isSelected = item.id === (selectedCategoryId || '');
+                  return (
+                    <TouchableOpacity
+                      className={`px-4 py-2 rounded-full mr-2 border ${
+                        isSelected
+                          ? 'bg-primary border-primary'
+                          : 'bg-card border-border'
+                      }`}
+                      onPress={() => setSelectedCategoryId(item.id || null)}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          isSelected ? 'text-white' : 'text-textSecondary'
+                        }`}
+                      >
+                        {item.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+
+            <Text className="text-text font-bold text-sm mb-2">Recent Expense Feed</Text>
+          </View>
+        }
+        ListEmptyComponent={
+          isLoading ? (
+            <View className="py-12 justify-center items-center">
+              <ActivityIndicator size="large" color="#6C63FF" />
+            </View>
+          ) : (
+            <View className="py-12 justify-center items-center px-6">
+              <Ionicons name="receipt-outline" size={54} color="#6b7280" className="mb-3" />
+              <Text className="text-text font-bold text-base mb-1">No expenses found</Text>
+              <Text className="text-textSecondary text-center text-xs">
+                Tap the + button below to log your first expense.
+              </Text>
+            </View>
+          )
+        }
+      />
 
       {/* Floating Action Button */}
       <TouchableOpacity
