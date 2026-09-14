@@ -19,7 +19,8 @@ from app.api.export import router as export_router
 settings = get_settings()
 
 from contextlib import asynccontextmanager
-from app.db.session import init_db
+from sqlalchemy import text
+from app.db.session import init_db, engine
 from app.core.logging import setup_logging, RequestLoggingMiddleware, logger
 
 # Initialize central logger
@@ -66,6 +67,45 @@ app.include_router(export_router, prefix=settings.API_V1_PREFIX)
 
 
 
+@app.get("/")
+async def root():
+    return {
+        "app": settings.APP_NAME,
+        "tagline": "Your Personal Financial Intelligence System",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/health/db")
+async def db_health_check():
+    tables = []
+    error_detail = None
+    try:
+        async with engine.connect() as conn:
+            try:
+                res = await conn.execute(
+                    text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;")
+                )
+                tables = [row[0] for row in res.fetchall()]
+            except Exception:
+                res = await conn.execute(
+                    text("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+                )
+                tables = [row[0] for row in res.fetchall()]
+    except Exception as e:
+        error_detail = str(e)
+
+    return {
+        "status": "connected" if error_detail is None else "error",
+        "tables_count": len(tables),
+        "tables": tables,
+        "has_users_table": "users" in tables,
+        "error": error_detail,
+    }
