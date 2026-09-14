@@ -17,7 +17,7 @@ import { bikeApi } from '../../../src/api/bikes';
 import { BikeDashboardSummary, Bike } from '../../../src/types/bike';
 import { formatCurrency } from '../../../src/utils/formatting';
 
-export default function BikeScreen() {
+export default function VehicleScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<BikeDashboardSummary | null>(null);
@@ -269,7 +269,7 @@ export default function BikeScreen() {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
         <ActivityIndicator size="large" color="#6366f1" />
-        <Text className="text-textSecondary mt-2">Loading Bike Tracker...</Text>
+        <Text className="text-textSecondary mt-2">Loading Vehicle Tracker...</Text>
       </SafeAreaView>
     );
   }
@@ -292,7 +292,7 @@ export default function BikeScreen() {
 
         <View className="flex-1 justify-center items-center p-6">
           <View className="w-20 h-20 rounded-full bg-primary/10 border border-primary/30 items-center justify-center mb-4">
-            <Ionicons name="bicycle" size={40} color="#6366f1" />
+            <Ionicons name="car-sport" size={40} color="#6366f1" />
           </View>
           <Text className="text-xl font-bold text-text text-center">No Vehicle Registered</Text>
           <Text className="text-textSecondary text-xs text-center mt-2 mb-6">
@@ -422,7 +422,7 @@ export default function BikeScreen() {
         <View className="flex-row justify-between items-center">
           <View className="flex-1 mr-2">
             <View className="flex-row items-center gap-2">
-              <Text className="text-2xl font-bold text-text">{bike?.name || 'My Bike'}</Text>
+              <Text className="text-2xl font-bold text-text">{bike?.name || 'My Vehicle'}</Text>
               <TouchableOpacity
                 onPress={handleOpenEditBike}
                 className="w-7 h-7 rounded-full bg-primary/20 items-center justify-center"
@@ -459,7 +459,7 @@ export default function BikeScreen() {
                   b.id === bike.id ? 'bg-primary border-primary' : 'bg-background border-border'
                 }`}
               >
-                <Ionicons name="bicycle" size={12} color={b.id === bike.id ? '#ffffff' : '#9ca3af'} />
+                <Ionicons name="car-sport" size={12} color={b.id === bike.id ? '#ffffff' : '#9ca3af'} />
                 <Text className={`text-xs font-medium ${b.id === bike.id ? 'text-white' : 'text-textSecondary'}`}>
                   {b.name}
                 </Text>
@@ -981,7 +981,7 @@ export default function BikeScreen() {
               <TextInput
                 value={formBikeName}
                 onChangeText={setFormBikeName}
-                placeholder="e.g. My Bike"
+                placeholder="e.g. My Vehicle"
                 placeholderTextColor="#64748b"
                 className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
               />

@@ -393,7 +393,7 @@ export default function ProfileScreen() {
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center gap-2">
               <Ionicons name="bicycle" size={20} color={COLORS.primary} />
-              <Text className="text-text font-bold text-base">Vehicle & Bike Details</Text>
+              <Text className="text-text font-bold text-base">Vehicle Details</Text>
             </View>
             <TouchableOpacity
               onPress={openAddBikeModal}
@@ -411,14 +411,14 @@ export default function ProfileScreen() {
               <Ionicons name="bicycle-outline" size={42} color="#6b7280" />
               <Text className="text-text font-bold text-sm mt-2">No Vehicle Registered Yet</Text>
               <Text className="text-textSecondary text-xs text-center mt-1">
-                Add your bike (e.g. Royal Enfield, KTM, Honda, Triumph, Yamaha) to start logging fuel and mileage!
+                Add your vehicle (e.g. Honda City, KTM Duke, Hyundai Creta, RE Hunter) to start logging fuel and mileage!
               </Text>
               <TouchableOpacity
                 onPress={openAddBikeModal}
                 className="mt-3 bg-primary px-4 py-2 rounded-xl flex-row items-center gap-1.5"
               >
                 <Ionicons name="add-circle-outline" size={16} color="#ffffff" />
-                <Text className="text-white font-bold text-xs">Add Your Bike</Text>
+                <Text className="text-white font-bold text-xs">Add Your Vehicle</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -667,7 +667,7 @@ export default function ProfileScreen() {
                 <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name</Text>
                 <TextInput
                   className="bg-background text-text p-3 rounded-xl border border-border"
-                  placeholder="e.g. My Bike"
+                  placeholder="e.g. My Vehicle"
                   placeholderTextColor="#6b7280"
                   value={bikeName}
                   onChangeText={setBikeName}

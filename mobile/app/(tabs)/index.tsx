@@ -242,10 +242,10 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Bike Tracker Preview Card */}
+        {/* Vehicle Tracker Preview Card */}
         <View className="bg-card rounded-2xl p-5 mb-10 border border-border">
           <View className="flex-row justify-between items-center mb-2">
-            <Text className="text-text font-bold text-base">Bike Tracker</Text>
+            <Text className="text-text font-bold text-base">Vehicle Tracker</Text>
             <View className="bg-elevated px-2 py-0.5 rounded">
               <Text className="text-textSecondary text-[10px] uppercase font-bold">Phase 6</Text>
             </View>
@@ -255,9 +255,9 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity
             className="flex-row items-center"
-            onPress={() => router.push('/(tabs)/bike')}
+            onPress={() => router.push('/(tabs)/vehicle')}
           >
-            <Text className="text-primary text-xs font-bold">Go to Bike</Text>
+            <Text className="text-primary text-xs font-bold">Go to Vehicle</Text>
             <Ionicons name="arrow-forward" size={12} color="#6C63FF" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>

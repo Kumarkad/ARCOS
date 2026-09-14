@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function BikeLayout() {
+export default function VehicleLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0f0f23' } }}>
       <Stack.Screen name="index" />
