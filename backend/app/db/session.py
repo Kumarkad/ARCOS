@@ -2,6 +2,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import get_settings
 from app.db.base import Base
+import app.models  # noqa: F401 - Register all models with Base.metadata
 
 settings = get_settings()
 
