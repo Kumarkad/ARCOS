@@ -13,11 +13,17 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://arcos-dy3p.onrender.com/api/v1"
       }
     },
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://arcos-dy3p.onrender.com/api/v1"
       }
     }
   },
