@@ -39,6 +39,10 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -47,7 +51,14 @@ export default function RegisterScreen() {
       await register(email, password, fullName);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message || 'An error occurred');
+      const serverMsg =
+        error.response?.data?.error?.message ||
+        (Array.isArray(error.response?.data?.detail)
+          ? error.response.data.detail.map((d: any) => d.msg || d).join(', ')
+          : error.response?.data?.detail) ||
+        error.message ||
+        'An error occurred';
+      Alert.alert('Registration Failed', serverMsg);
     }
   };
 

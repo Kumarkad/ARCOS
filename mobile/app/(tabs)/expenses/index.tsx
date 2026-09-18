@@ -32,6 +32,14 @@ export default function ExpensesScreen() {
   });
 
   const {
+    data: summaryData,
+    refetch: refetchSummary
+  } = useQuery({
+    queryKey: ['expense-summary'],
+    queryFn: () => expensesApi.getExpenseSummary(),
+  });
+
+  const {
     data: expensesData,
     isLoading,
     isRefetching,
@@ -47,13 +55,37 @@ export default function ExpensesScreen() {
 
   const categories = categoriesData?.data || [];
   const expenses = expensesData?.data || [];
+  const summary = summaryData?.data;
+  const thisMonthTotal = Number(summary?.this_month_total || 0);
+
+  // Dynamic Category items for donut chart
+  const donutCategories = (summary?.category_breakdown || []).map((cat) => ({
+    name: cat.category_name,
+    percentage: Number(cat.percentage || 0),
+    color: cat.category_color || '#6C63FF',
+    amount: Number(cat.total_amount || 0),
+  }));
+
+  // Dynamic Daily spending for line chart
+  const dailySpendMap: Record<string, number> = {};
+  expenses.forEach((e) => {
+    const d = e.expense_date ? e.expense_date.split('T')[0] : '';
+    if (d) {
+      dailySpendMap[d] = (dailySpendMap[d] || 0) + Number(e.amount);
+    }
+  });
+  const dailyData = Object.entries(dailySpendMap).map(([day, amount]) => ({
+    day,
+    amount,
+  }));
+  const peakAmount = dailyData.length > 0 ? Math.max(...dailyData.map((d) => d.amount)) : 0;
 
   const handleRefresh = useCallback(async () => {
     if (pendingQueue.length > 0) {
       await syncPendingExpenses();
     }
-    await refetch();
-  }, [pendingQueue, syncPendingExpenses, refetch]);
+    await Promise.all([refetch(), refetchSummary()]);
+  }, [pendingQueue, syncPendingExpenses, refetch, refetchSummary]);
 
   const renderExpenseItem = ({ item }: { item: Expense }) => (
     <TouchableOpacity
@@ -143,10 +175,17 @@ export default function ExpensesScreen() {
         ListHeaderComponent={
           <View className="mb-3">
             {/* Spending Line Chart */}
-            <SpendingLineChart />
+            <SpendingLineChart
+              totalAmount={thisMonthTotal}
+              peakAmount={peakAmount}
+              dailyData={dailyData}
+            />
 
             {/* Spending Donut Chart */}
-            <SpendingDonutChart />
+            <SpendingDonutChart
+              categories={donutCategories}
+              totalAmount={thisMonthTotal}
+            />
 
             {/* Category Filter Pills */}
             <View className="mb-3">

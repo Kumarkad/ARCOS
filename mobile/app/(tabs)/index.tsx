@@ -255,7 +255,7 @@ export default function HomeScreen() {
           </Text>
           <TouchableOpacity
             className="flex-row items-center"
-            onPress={() => router.push('/(tabs)/vehicle/index')}
+            onPress={() => router.push('/(tabs)/vehicle')}
           >
             <Text className="text-primary text-xs font-bold">Go to Vehicle</Text>
             <Ionicons name="arrow-forward" size={12} color="#6C63FF" style={{ marginLeft: 4 }} />

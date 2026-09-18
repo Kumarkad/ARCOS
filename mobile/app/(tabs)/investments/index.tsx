@@ -580,12 +580,17 @@ export default function InvestmentsScreen() {
             <View className="gap-4 pb-12">
               {/* Portfolio Growth Line Chart */}
               <PortfolioLineChart
-                currentValue={portfolio?.total_current_value || 580000}
-                gainPercent={portfolio?.total_unrealized_pnl_pct || 12.4}
+                currentValue={portfolio?.total_current_value || 0}
+                investedValue={portfolio?.total_invested || 0}
+                unrealizedPnl={portfolio?.total_unrealized_pnl || 0}
+                gainPercent={portfolio?.total_unrealized_pnl_pct || 0}
               />
 
               {/* Asset Allocation Donut Chart */}
-              <AssetAllocationDonutChart />
+              <AssetAllocationDonutChart
+                holdings={portfolio?.holdings || []}
+                totalValue={portfolio?.total_current_value || 0}
+              />
 
               {/* Portfolio Summary Card */}
               <View className="bg-card p-4 rounded-xl border border-border">

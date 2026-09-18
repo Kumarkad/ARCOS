@@ -41,7 +41,14 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message || 'An error occurred');
+      const serverMsg =
+        error.response?.data?.error?.message ||
+        (Array.isArray(error.response?.data?.detail)
+          ? error.response.data.detail.map((d: any) => d.msg || d).join(', ')
+          : error.response?.data?.detail) ||
+        error.message ||
+        'An error occurred';
+      Alert.alert('Login Failed', serverMsg);
     }
   };
 

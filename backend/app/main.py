@@ -50,7 +50,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import Request
+
 app.add_exception_handler(AppException, app_exception_handler)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for err in exc.errors():
+        field = str(err["loc"][-1]) if err["loc"] else "field"
+        msg = err["msg"]
+        if "at least" in msg:
+            msg = msg.replace("String should have at least", f"Password must have at least")
+        errors.append(f"{field.capitalize()}: {msg}")
+    error_msg = "; ".join(errors) if errors else "Validation failed"
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": error_msg,
+                "details": exc.errors()
+            }
+        }
+    )
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(categories_router, prefix=settings.API_V1_PREFIX)

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -17,6 +18,7 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { bikeApi } from '../../src/api/bikes';
 import { Bike } from '../../src/types/bike';
 import { COLORS } from '../../src/utils/constants';
+import { BrandModelPicker } from '../../src/components/vehicle/BrandModelPicker';
 
 const POPULAR_CURRENCIES = [
   { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
@@ -142,17 +144,21 @@ export default function ProfileScreen() {
 
   // Create new Bike
   const handleCreateBike = async () => {
-    if (!bikeName.trim() || !bikeMake.trim() || !bikeModel.trim()) {
-      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make (brand), and Model.');
+    const finalMake = bikeMake.trim();
+    const finalModel = bikeModel.trim();
+    const finalName = bikeName.trim() || `${finalMake} ${finalModel}`;
+
+    if (!finalMake || !finalModel) {
+      Alert.alert('Missing Fields', 'Please select Vehicle Brand (Make) and Model.');
       return;
     }
 
     setSubmittingBike(true);
     try {
       await bikeApi.createBike({
-        name: bikeName.trim(),
-        make: bikeMake.trim(),
-        model: bikeModel.trim(),
+        name: finalName,
+        make: finalMake,
+        model: finalModel,
         year: bikeYear ? parseInt(bikeYear, 10) : undefined,
         registration_number: bikeRegNum.trim() || undefined,
         initial_odometer: bikeOdo ? parseFloat(bikeOdo) : 0,
@@ -162,7 +168,7 @@ export default function ProfileScreen() {
 
       setAddBikeModalVisible(false);
       await loadBikes();
-      Alert.alert('Vehicle Added', `${bikeMake} ${bikeModel} registered successfully!`);
+      Alert.alert('Vehicle Added', `${finalMake} ${finalModel} registered successfully!`);
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || err.message || 'Failed to add vehicle.');
     } finally {
@@ -173,17 +179,21 @@ export default function ProfileScreen() {
   // Update existing Bike
   const handleUpdateBike = async () => {
     if (!selectedBike) return;
-    if (!bikeName.trim() || !bikeMake.trim() || !bikeModel.trim()) {
-      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make, and Model.');
+    const finalMake = bikeMake.trim();
+    const finalModel = bikeModel.trim();
+    const finalName = bikeName.trim() || `${finalMake} ${finalModel}`;
+
+    if (!finalMake || !finalModel) {
+      Alert.alert('Missing Fields', 'Please select Vehicle Brand (Make) and Model.');
       return;
     }
 
     setSubmittingBike(true);
     try {
       await bikeApi.updateBike(selectedBike.id, {
-        name: bikeName.trim(),
-        make: bikeMake.trim(),
-        model: bikeModel.trim(),
+        name: finalName,
+        make: finalMake,
+        model: finalModel,
         year: bikeYear ? parseInt(bikeYear, 10) : undefined,
         registration_number: bikeRegNum.trim() || undefined,
         current_odometer: bikeOdo ? parseFloat(bikeOdo) : undefined,
@@ -239,6 +249,10 @@ export default function ProfileScreen() {
 
   // Logout handler
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      logout();
+      return;
+    }
     Alert.alert('Logout', 'Are you sure you want to log out of ARCOS?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -522,38 +536,29 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Brand & Model Dropdowns */}
+              <BrandModelPicker
+                selectedBrand={bikeMake}
+                selectedModel={bikeModel}
+                onSelectBrand={(brand) => {
+                  setBikeMake(brand);
+                  setBikeName(`${brand} ${bikeModel || ''}`.trim());
+                }}
+                onSelectModel={(model) => {
+                  setBikeModel(model);
+                  setBikeName(`${bikeMake || ''} ${model}`.trim());
+                }}
+              />
+
               <View className="mb-3">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name *</Text>
+                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
                 <TextInput
                   className="bg-background text-text p-3 rounded-xl border border-border"
-                  placeholder="e.g. My Commuter or Hunter 350"
+                  placeholder="e.g. My Commuter (defaults to Brand Model)"
                   placeholderTextColor="#6b7280"
                   value={bikeName}
                   onChangeText={setBikeName}
                 />
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Make (Brand) *</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. Royal Enfield, Honda"
-                    placeholderTextColor="#6b7280"
-                    value={bikeMake}
-                    onChangeText={setBikeMake}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Model *</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. Hunter 350, CB350"
-                    placeholderTextColor="#6b7280"
-                    value={bikeModel}
-                    onChangeText={setBikeModel}
-                  />
-                </View>
               </View>
 
               <View className="flex-row gap-2 mb-3">
@@ -663,38 +668,29 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Brand & Model Dropdowns */}
+              <BrandModelPicker
+                selectedBrand={bikeMake}
+                selectedModel={bikeModel}
+                onSelectBrand={(brand) => {
+                  setBikeMake(brand);
+                  setBikeName(`${brand} ${bikeModel || ''}`.trim());
+                }}
+                onSelectModel={(model) => {
+                  setBikeModel(model);
+                  setBikeName(`${bikeMake || ''} ${model}`.trim());
+                }}
+              />
+
               <View className="mb-3">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name</Text>
+                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
                 <TextInput
                   className="bg-background text-text p-3 rounded-xl border border-border"
-                  placeholder="e.g. My Vehicle"
+                  placeholder="e.g. My Vehicle (defaults to Brand Model)"
                   placeholderTextColor="#6b7280"
                   value={bikeName}
                   onChangeText={setBikeName}
                 />
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Make (Brand)</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. Royal Enfield"
-                    placeholderTextColor="#6b7280"
-                    value={bikeMake}
-                    onChangeText={setBikeMake}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Model</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. Hunter 350"
-                    placeholderTextColor="#6b7280"
-                    value={bikeModel}
-                    onChangeText={setBikeModel}
-                  />
-                </View>
               </View>
 
               <View className="flex-row gap-2 mb-3">

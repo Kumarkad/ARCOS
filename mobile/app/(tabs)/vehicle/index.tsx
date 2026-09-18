@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { bikeApi } from '../../../src/api/bikes';
 import { BikeDashboardSummary, Bike } from '../../../src/types/bike';
 import { formatCurrency } from '../../../src/utils/formatting';
+import { BrandModelPicker } from '../../../src/components/vehicle/BrandModelPicker';
 
 export default function VehicleScreen() {
   const [loading, setLoading] = useState(true);
@@ -211,16 +212,20 @@ export default function VehicleScreen() {
   };
 
   const handleSaveNewBike = async () => {
-    if (!formBikeName.trim() || !formBikeMake.trim() || !formBikeModel.trim()) {
-      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make, and Model.');
+    const finalMake = formBikeMake.trim();
+    const finalModel = formBikeModel.trim();
+    const finalName = formBikeName.trim() || `${finalMake} ${finalModel}`;
+
+    if (!finalMake || !finalModel) {
+      Alert.alert('Missing Fields', 'Please select Vehicle Brand (Make) and Model.');
       return;
     }
     setSubmitting(true);
     try {
       const created = await bikeApi.createBike({
-        name: formBikeName.trim(),
-        make: formBikeMake.trim(),
-        model: formBikeModel.trim(),
+        name: finalName,
+        make: finalMake,
+        model: finalModel,
         year: formBikeYear ? parseInt(formBikeYear, 10) : undefined,
         registration_number: formBikeRegNum.trim() || undefined,
         initial_odometer: formBikeOdo ? parseFloat(formBikeOdo) : 0,
@@ -239,16 +244,20 @@ export default function VehicleScreen() {
 
   const handleSaveEditBike = async () => {
     if (!dashboard?.bike.id) return;
-    if (!formBikeName.trim() || !formBikeMake.trim() || !formBikeModel.trim()) {
-      Alert.alert('Missing Fields', 'Please enter Vehicle Name, Make, and Model.');
+    const finalMake = formBikeMake.trim();
+    const finalModel = formBikeModel.trim();
+    const finalName = formBikeName.trim() || `${finalMake} ${finalModel}`;
+
+    if (!finalMake || !finalModel) {
+      Alert.alert('Missing Fields', 'Please select Vehicle Brand (Make) and Model.');
       return;
     }
     setSubmitting(true);
     try {
       await bikeApi.updateBike(dashboard.bike.id, {
-        name: formBikeName.trim(),
-        make: formBikeMake.trim(),
-        model: formBikeModel.trim(),
+        name: finalName,
+        make: finalMake,
+        model: finalModel,
         year: formBikeYear ? parseInt(formBikeYear, 10) : undefined,
         registration_number: formBikeRegNum.trim() || undefined,
         current_odometer: formBikeOdo ? parseFloat(formBikeOdo) : undefined,
@@ -318,36 +327,28 @@ export default function VehicleScreen() {
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false}>
-                <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+                {/* Brand & Model Dropdowns */}
+                <BrandModelPicker
+                  selectedBrand={formBikeMake}
+                  selectedModel={formBikeModel}
+                  onSelectBrand={(brand) => {
+                    setFormBikeMake(brand);
+                    setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                  }}
+                  onSelectModel={(model) => {
+                    setFormBikeModel(model);
+                    setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                  }}
+                />
+
+                <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
                 <TextInput
                   value={formBikeName}
                   onChangeText={setFormBikeName}
-                  placeholder="e.g. My Commuter or Hunter 350"
+                  placeholder="e.g. My Commuter (defaults to Brand Model)"
                   placeholderTextColor="#64748b"
                   className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
                 />
-                <View className="flex-row gap-2 mb-3">
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
-                    <TextInput
-                      value={formBikeMake}
-                      onChangeText={setFormBikeMake}
-                      placeholder="e.g. Royal Enfield"
-                      placeholderTextColor="#64748b"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Model *</Text>
-                    <TextInput
-                      value={formBikeModel}
-                      onChangeText={setFormBikeModel}
-                      placeholder="e.g. Hunter 350"
-                      placeholderTextColor="#64748b"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
-                  </View>
-                </View>
                 <View className="flex-row gap-2 mb-3">
                   <View className="flex-1">
                     <Text className="text-textSecondary text-xs mb-1">Year</Text>
@@ -977,37 +978,28 @@ export default function VehicleScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+              {/* Brand & Model Dropdowns */}
+              <BrandModelPicker
+                selectedBrand={formBikeMake}
+                selectedModel={formBikeModel}
+                onSelectBrand={(brand) => {
+                  setFormBikeMake(brand);
+                  setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                }}
+                onSelectModel={(model) => {
+                  setFormBikeModel(model);
+                  setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                }}
+              />
+
+              <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
               <TextInput
                 value={formBikeName}
                 onChangeText={setFormBikeName}
-                placeholder="e.g. My Vehicle"
+                placeholder="e.g. My Vehicle (defaults to Brand Model)"
                 placeholderTextColor="#64748b"
                 className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
               />
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
-                  <TextInput
-                    value={formBikeMake}
-                    onChangeText={setFormBikeMake}
-                    placeholder="e.g. Royal Enfield"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Model *</Text>
-                  <TextInput
-                    value={formBikeModel}
-                    onChangeText={setFormBikeModel}
-                    placeholder="e.g. Hunter 350"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
 
               <View className="flex-row gap-2 mb-3">
                 <View className="flex-1">
@@ -1113,37 +1105,28 @@ export default function VehicleScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-textSecondary text-xs mb-1">Vehicle Name *</Text>
+              {/* Brand & Model Dropdowns */}
+              <BrandModelPicker
+                selectedBrand={formBikeMake}
+                selectedModel={formBikeModel}
+                onSelectBrand={(brand) => {
+                  setFormBikeMake(brand);
+                  setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                }}
+                onSelectModel={(model) => {
+                  setFormBikeModel(model);
+                  setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                }}
+              />
+
+              <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
               <TextInput
                 value={formBikeName}
                 onChangeText={setFormBikeName}
-                placeholder="e.g. Daily Commuter"
+                placeholder="e.g. Daily Commuter (defaults to Brand Model)"
                 placeholderTextColor="#64748b"
                 className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
               />
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Make (Brand) *</Text>
-                  <TextInput
-                    value={formBikeMake}
-                    onChangeText={setFormBikeMake}
-                    placeholder="e.g. Royal Enfield"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Model *</Text>
-                  <TextInput
-                    value={formBikeModel}
-                    onChangeText={setFormBikeModel}
-                    placeholder="e.g. Hunter 350"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
 
               <View className="flex-row gap-2 mb-3">
                 <View className="flex-1">
