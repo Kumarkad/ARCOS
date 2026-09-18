@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "ARCOS",
+    "slug": "arcos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "arcos",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.starktechno.arcos"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a1a2e"
+      },
+      "package": "com.starktechno.arcos"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "46261384-ee64-4a2d-a611-6e7bce62ca6c"
+      }
+    },
+    "owner": "mr.tonystark"
+  }
+}

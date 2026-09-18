@@ -1,0 +1,12 @@
+# Local agent and code-analysis output
+.agents/
+graphify-out/
+
+# Local backend runtime data
+backend/arcos.db
+backend/.pytest_cache/
+
+# Generated or backup mobile files
+mobile/test-output.css
+mobile/package.json.bak
+mobile/package-lock.json.bak
