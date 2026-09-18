@@ -285,6 +285,40 @@ export default function VehicleScreen() {
 
   const bike = dashboard?.bike;
 
+  // Derive effective average mileage with client-side fallback calculation
+  const effectiveAvgMileage = React.useMemo(() => {
+    const fromServer = Number(dashboard?.average_mileage_kmpl);
+    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
+
+    const logs = dashboard?.recent_fuel_logs || [];
+    const totalDist = logs.reduce((acc, l) => acc + (Number(l.distance_traveled) || 0), 0);
+    const totalFuel = logs.reduce((acc, l) => acc + (Number(l.fuel_amount_liters) || 0), 0);
+    if (totalDist > 0 && totalFuel > 0) {
+      return (totalDist / totalFuel).toFixed(1);
+    }
+    const odoDiff = (bike?.current_odometer || 0) - (bike?.initial_odometer || 0);
+    if (odoDiff > 0 && totalFuel > 0) {
+      return (odoDiff / totalFuel).toFixed(1);
+    }
+    return null;
+  }, [dashboard, bike]);
+
+  const effectiveLatestMileage = React.useMemo(() => {
+    const fromServer = Number(dashboard?.latest_mileage_kmpl);
+    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
+
+    const logs = dashboard?.recent_fuel_logs || [];
+    for (const l of logs) {
+      if (l.calculated_mileage && Number(l.calculated_mileage) > 0) {
+        return Number(l.calculated_mileage).toFixed(1);
+      }
+      if (l.distance_traveled && l.fuel_amount_liters && Number(l.fuel_amount_liters) > 0) {
+        return (Number(l.distance_traveled) / Number(l.fuel_amount_liters)).toFixed(1);
+      }
+    }
+    return effectiveAvgMileage;
+  }, [dashboard, effectiveAvgMileage]);
+
   if (!bike) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -498,13 +532,13 @@ export default function VehicleScreen() {
             <View>
               <Text className="text-textSecondary text-xs">Avg Mileage</Text>
               <Text className="text-success font-bold text-base mt-0.5">
-                {dashboard?.average_mileage_kmpl ? `${dashboard.average_mileage_kmpl} km/L` : '—'}
+                {effectiveAvgMileage ? `${effectiveAvgMileage} km/L` : '—'}
               </Text>
             </View>
             <View>
               <Text className="text-textSecondary text-xs">Latest Mileage</Text>
               <Text className="text-text font-bold text-base mt-0.5">
-                {dashboard?.latest_mileage_kmpl ? `${dashboard.latest_mileage_kmpl} km/L` : '—'}
+                {effectiveLatestMileage ? `${effectiveLatestMileage} km/L` : '—'}
               </Text>
             </View>
             <View>
@@ -667,18 +701,26 @@ export default function VehicleScreen() {
                     </Text>
                   </View>
                 </View>
-                {log.calculated_mileage && (
-                  <View className="mt-2 pt-2 border-t border-border flex-row justify-between items-center">
-                    <Text className="text-textSecondary text-xs">
-                      Distance: {log.distance_traveled} km
-                    </Text>
-                    <View className="bg-success/20 px-2 py-0.5 rounded border border-success">
-                      <Text className="text-success text-xs font-bold">
-                        {log.calculated_mileage} km/L
+                {(() => {
+                  const itemMileage = log.calculated_mileage
+                    ? Number(log.calculated_mileage).toFixed(1)
+                    : log.distance_traveled && log.fuel_amount_liters && Number(log.fuel_amount_liters) > 0
+                    ? (Number(log.distance_traveled) / Number(log.fuel_amount_liters)).toFixed(1)
+                    : null;
+
+                  return itemMileage ? (
+                    <View className="mt-2 pt-2 border-t border-border flex-row justify-between items-center">
+                      <Text className="text-textSecondary text-xs">
+                        Distance: {log.distance_traveled ? `${log.distance_traveled} km` : 'Refill'}
                       </Text>
+                      <View className="bg-success/20 px-2 py-0.5 rounded border border-success">
+                        <Text className="text-success text-xs font-bold">
+                          {itemMileage} km/L
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                )}
+                  ) : null;
+                })()}
               </View>
             ))
           )

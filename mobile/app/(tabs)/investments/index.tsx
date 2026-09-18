@@ -584,6 +584,7 @@ export default function InvestmentsScreen() {
                 investedValue={portfolio?.total_invested || 0}
                 unrealizedPnl={portfolio?.total_unrealized_pnl || 0}
                 gainPercent={portfolio?.total_unrealized_pnl_pct || 0}
+                holdings={portfolio?.holdings || []}
               />
 
               {/* Asset Allocation Donut Chart */}

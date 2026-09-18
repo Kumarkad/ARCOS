@@ -61,10 +61,12 @@ class BikeService:
 
         if prev_log and data.odometer_reading > prev_log.odometer_reading:
             distance = data.odometer_reading - prev_log.odometer_reading
-            if data.is_full_tank and prev_log.is_full_tank and data.fuel_amount_liters > 0:
+            if data.fuel_amount_liters > 0:
                 mileage = round(distance / data.fuel_amount_liters, 2)
         elif not prev_log and data.odometer_reading > bike.initial_odometer:
             distance = data.odometer_reading - bike.initial_odometer
+            if data.fuel_amount_liters > 0:
+                mileage = round(distance / data.fuel_amount_liters, 2)
 
         log = await self.repo.create_fuel_log(
             user_id=user_id,
@@ -150,6 +152,16 @@ class BikeService:
             if total_mileage_fuel > 0
             else Decimal("0.0")
         )
+
+        # Fallback: if avg_mileage is 0 but we have fuel logs with distance and liters
+        if avg_mileage == 0 and fuel_logs:
+            total_fuel_liters = sum((l.fuel_amount_liters for l in fuel_logs if l.fuel_amount_liters), Decimal("0.0"))
+            valid_distance = total_distance if total_distance > 0 else sum((l.distance_traveled for l in fuel_logs if l.distance_traveled), Decimal("0.0"))
+            if valid_distance > 0 and total_fuel_liters > 0:
+                avg_mileage = round(valid_distance / total_fuel_liters, 2)
+
+        if latest_mileage is None and avg_mileage > 0:
+            latest_mileage = avg_mileage
 
         # Maintenance & Other expenses
         total_maint_cost = sum((m.cost for m in maintenance), Decimal("0.0"))
