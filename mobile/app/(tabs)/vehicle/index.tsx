@@ -101,6 +101,42 @@ export default function VehicleScreen() {
     setRefreshing(false);
   };
 
+  const bike = dashboard?.bike;
+
+  // Derive effective average mileage with client-side fallback calculation
+  const effectiveAvgMileage = React.useMemo(() => {
+    const fromServer = Number(dashboard?.average_mileage_kmpl);
+    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
+
+    const logs = dashboard?.recent_fuel_logs || [];
+    const totalDist = logs.reduce((acc, l) => acc + (Number(l.distance_traveled) || 0), 0);
+    const totalFuel = logs.reduce((acc, l) => acc + (Number(l.fuel_amount_liters) || 0), 0);
+    if (totalDist > 0 && totalFuel > 0) {
+      return (totalDist / totalFuel).toFixed(1);
+    }
+    const odoDiff = (bike?.current_odometer || 0) - (bike?.initial_odometer || 0);
+    if (odoDiff > 0 && totalFuel > 0) {
+      return (odoDiff / totalFuel).toFixed(1);
+    }
+    return null;
+  }, [dashboard, bike]);
+
+  const effectiveLatestMileage = React.useMemo(() => {
+    const fromServer = Number(dashboard?.latest_mileage_kmpl);
+    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
+
+    const logs = dashboard?.recent_fuel_logs || [];
+    for (const l of logs) {
+      if (l.calculated_mileage && Number(l.calculated_mileage) > 0) {
+        return Number(l.calculated_mileage).toFixed(1);
+      }
+      if (l.distance_traveled && l.fuel_amount_liters && Number(l.fuel_amount_liters) > 0) {
+        return (Number(l.distance_traveled) / Number(l.fuel_amount_liters)).toFixed(1);
+      }
+    }
+    return effectiveAvgMileage;
+  }, [dashboard, effectiveAvgMileage]);
+
   // Submit Fuel Refill
   const handleSaveFuel = async () => {
     if (!dashboard?.bike.id || !fuelOdo || !fuelLiters || !fuelCost) {
@@ -282,42 +318,6 @@ export default function VehicleScreen() {
       </SafeAreaView>
     );
   }
-
-  const bike = dashboard?.bike;
-
-  // Derive effective average mileage with client-side fallback calculation
-  const effectiveAvgMileage = React.useMemo(() => {
-    const fromServer = Number(dashboard?.average_mileage_kmpl);
-    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
-
-    const logs = dashboard?.recent_fuel_logs || [];
-    const totalDist = logs.reduce((acc, l) => acc + (Number(l.distance_traveled) || 0), 0);
-    const totalFuel = logs.reduce((acc, l) => acc + (Number(l.fuel_amount_liters) || 0), 0);
-    if (totalDist > 0 && totalFuel > 0) {
-      return (totalDist / totalFuel).toFixed(1);
-    }
-    const odoDiff = (bike?.current_odometer || 0) - (bike?.initial_odometer || 0);
-    if (odoDiff > 0 && totalFuel > 0) {
-      return (odoDiff / totalFuel).toFixed(1);
-    }
-    return null;
-  }, [dashboard, bike]);
-
-  const effectiveLatestMileage = React.useMemo(() => {
-    const fromServer = Number(dashboard?.latest_mileage_kmpl);
-    if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
-
-    const logs = dashboard?.recent_fuel_logs || [];
-    for (const l of logs) {
-      if (l.calculated_mileage && Number(l.calculated_mileage) > 0) {
-        return Number(l.calculated_mileage).toFixed(1);
-      }
-      if (l.distance_traveled && l.fuel_amount_liters && Number(l.fuel_amount_liters) > 0) {
-        return (Number(l.distance_traveled) / Number(l.fuel_amount_liters)).toFixed(1);
-      }
-    }
-    return effectiveAvgMileage;
-  }, [dashboard, effectiveAvgMileage]);
 
   if (!bike) {
     return (
