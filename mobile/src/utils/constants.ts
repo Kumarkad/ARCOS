@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://arcos-dy3p.onrender.com/api/v1';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://arcos-9zh1ub7va-kumars-projects-430e6b6c.vercel.app/api/v1';
 
 export const COLORS = {
   primary: '#6C63FF',

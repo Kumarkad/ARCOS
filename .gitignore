@@ -10,3 +10,7 @@ backend/.pytest_cache/
 mobile/test-output.css
 mobile/package.json.bak
 mobile/package-lock.json.bak
+
+# Python cache
+__pycache__/
+*.pyc
