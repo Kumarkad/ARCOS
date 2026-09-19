@@ -67,9 +67,11 @@ class ChatService:
 
         # 3. Build message history for LLM
         history = []
-        for m in sess.messages[-6:]:
-            history.append({"role": m.role, "content": m.content})
-        history.append({"role": "user", "content": content})
+        for m in (sess.messages or [])[-6:]:
+            if m.content and m.content.strip():
+                history.append({"role": m.role, "content": m.content.strip()})
+        if not history or history[-1].get("content") != content.strip() or history[-1].get("role") != "user":
+            history.append({"role": "user", "content": content.strip()})
 
         # 4. Call LLM
         llm_output = await self.llm_provider.generate_response(history)

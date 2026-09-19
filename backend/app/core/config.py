@@ -4,7 +4,7 @@ from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    DATABASE_URL: str
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/arcos"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
             elif v.startswith("postgresql://") and not v.startswith("postgresql+asyncpg://"):
                 return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "dev-secret-key-arcos-jwt-token-2026"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
@@ -46,7 +46,11 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE_PATH: str | None = "logs/arcos.log"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "backend/.env", "../backend/.env"),
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
 @lru_cache
 def get_settings() -> Settings:

@@ -9,6 +9,10 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +42,7 @@ export default function InvestmentsScreen() {
   // Portfolio state
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [accounts, setAccounts] = useState<InvestmentAccount[]>([]);
+  const [expandedHoldingId, setExpandedHoldingId] = useState<string | null>(null);
   const [txModalVisible, setTxModalVisible] = useState(false);
   const [txSymbol, setTxSymbol] = useState('');
   const [txType, setTxType] = useState<'BUY' | 'SELL'>('BUY');
@@ -53,6 +58,9 @@ export default function InvestmentsScreen() {
   const [editHoldingAvgPrice, setEditHoldingAvgPrice] = useState('');
   const [editHoldingNotes, setEditHoldingNotes] = useState('');
   const [editHoldingSubmitting, setEditHoldingSubmitting] = useState(false);
+
+  // IPO Filter state
+  const [ipoFilter, setIpoFilter] = useState<'ALL' | 'OPEN' | 'UPCOMING'>('ALL');
 
   // Suggestions & Search state
   const [suggestions, setSuggestions] = useState<StockSuggestion[]>([]);
@@ -647,78 +655,110 @@ export default function InvestmentsScreen() {
                   </Text>
                 </View>
               ) : (
-                portfolio.holdings.map((h) => (
-                  <View key={h.id} className="bg-card p-4 rounded-xl border border-border">
-                    <View className="flex-row justify-between items-start">
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-text font-bold text-base">{h.asset.symbol}</Text>
-                          <View className="bg-background px-1.5 py-0.5 rounded border border-border">
-                            <Text className="text-[10px] text-textSecondary font-semibold">{h.asset.asset_type}</Text>
+                portfolio.holdings.map((h) => {
+                  const isExpanded = expandedHoldingId === h.id;
+                  const formattedQty = Number(h.quantity) % 1 === 0 ? Math.round(Number(h.quantity)) : Number(h.quantity);
+                  return (
+                    <TouchableOpacity
+                      key={h.id}
+                      activeOpacity={0.85}
+                      onPress={() => setExpandedHoldingId(isExpanded ? null : h.id)}
+                      className={`bg-card p-4 rounded-xl border transition-all ${
+                        isExpanded ? 'border-primary/60 shadow-md' : 'border-border'
+                      }`}
+                    >
+                      <View className="flex-row justify-between items-start">
+                        <View className="flex-1 mr-2">
+                          <View className="flex-row items-center gap-2">
+                            <Text className="text-text font-bold text-base">{h.asset.symbol}</Text>
+                            <View className="bg-background px-1.5 py-0.5 rounded border border-border">
+                              <Text className="text-[10px] text-textSecondary font-semibold">{h.asset.asset_type}</Text>
+                            </View>
+                            <Ionicons
+                              name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                              size={14}
+                              color="#94a3b8"
+                            />
+                          </View>
+                          <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
+                            {h.asset.name}
+                          </Text>
+                        </View>
+                        <View className="items-end">
+                          <Text className="text-text font-bold text-base">
+                            {formatCurrency(h.current_value)}
+                          </Text>
+                          <Text
+                            className={`text-xs font-semibold ${
+                              h.unrealized_pnl >= 0 ? 'text-success' : 'text-danger'
+                            }`}
+                          >
+                            {h.unrealized_pnl >= 0 ? '+' : ''}
+                            {formatCurrency(h.unrealized_pnl)} ({formatPercentage(h.unrealized_pnl_pct)})
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-border">
+                        <Text className="text-textSecondary text-xs">
+                          Qty: <Text className="text-text font-semibold">{formattedQty}</Text> • Avg:{' '}
+                          <Text className="text-text font-semibold">{formatCurrency(h.average_buy_price)}</Text>
+                        </Text>
+                        <Text className="text-textSecondary text-xs">
+                          LTP: <Text className="text-text font-semibold">{formatCurrency(h.asset.current_price)}</Text>
+                        </Text>
+                      </View>
+
+                      {/* Expandable CRUD Action Bar (displayed when clicked) */}
+                      {isExpanded ? (
+                        <View className="mt-3 pt-3 border-t border-border/80">
+                          <View className="flex-row justify-between items-center mb-2">
+                            <Text className="text-textSecondary text-[10px] font-bold uppercase tracking-wider">
+                              Manage Holding
+                            </Text>
+                            <Text className="text-primary text-[10px] font-medium">
+                              Total Invested: {formatCurrency(h.total_invested)}
+                            </Text>
+                          </View>
+                          <View className="flex-row justify-end items-center gap-2">
+                            <TouchableOpacity
+                              onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'BUY')}
+                              className="bg-success/15 px-3 py-1.5 rounded-lg border border-success/30 flex-row items-center gap-1"
+                            >
+                              <Ionicons name="add" size={14} color="#22c55e" />
+                              <Text className="text-success text-xs font-bold">Buy</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'SELL')}
+                              className="bg-danger/15 px-3 py-1.5 rounded-lg border border-danger/30 flex-row items-center gap-1"
+                            >
+                              <Ionicons name="remove" size={14} color="#ef4444" />
+                              <Text className="text-danger text-xs font-bold">Sell</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleOpenEditHolding(h)}
+                              className="bg-primary/15 px-3 py-1.5 rounded-lg border border-primary/30 flex-row items-center gap-1"
+                            >
+                              <Ionicons name="pencil" size={13} color="#6366f1" />
+                              <Text className="text-primary text-xs font-bold">Edit</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDeleteHolding(h)}
+                              className="bg-card px-3 py-1.5 rounded-lg border border-border flex-row items-center gap-1"
+                            >
+                              <Ionicons name="trash-outline" size={13} color="#ef4444" />
+                              <Text className="text-danger text-xs font-bold">Delete</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                        <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
-                          {h.asset.name}
-                        </Text>
-                      </View>
-                      <View className="items-end">
-                        <Text className="text-text font-bold text-base">
-                          {formatCurrency(h.current_value)}
-                        </Text>
-                        <Text
-                          className={`text-xs font-semibold ${
-                            h.unrealized_pnl >= 0 ? 'text-success' : 'text-danger'
-                          }`}
-                        >
-                          {h.unrealized_pnl >= 0 ? '+' : ''}
-                          {formatCurrency(h.unrealized_pnl)} ({formatPercentage(h.unrealized_pnl_pct)})
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row justify-between items-center mt-3 pt-2 border-t border-border">
-                      <Text className="text-textSecondary text-xs">
-                        Qty: <Text className="text-text font-semibold">{h.quantity}</Text> • Avg:{' '}
-                        <Text className="text-text font-semibold">{formatCurrency(h.average_buy_price)}</Text>
-                      </Text>
-                      <Text className="text-textSecondary text-xs">
-                        LTP: <Text className="text-text font-semibold">{formatCurrency(h.asset.current_price)}</Text>
-                      </Text>
-                    </View>
-
-                    {/* Holding Action Buttons */}
-                    <View className="flex-row justify-end items-center gap-2 mt-3 pt-2 border-t border-border/60">
-                      <TouchableOpacity
-                        onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'BUY')}
-                        className="bg-success/15 px-2.5 py-1 rounded border border-success/30 flex-row items-center gap-1"
-                      >
-                        <Ionicons name="add" size={13} color="#22c55e" />
-                        <Text className="text-success text-xs font-semibold">Buy</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleQuickBuy(h.asset.symbol, h.asset.name, h.asset.current_price, 'SELL')}
-                        className="bg-danger/15 px-2.5 py-1 rounded border border-danger/30 flex-row items-center gap-1"
-                      >
-                        <Ionicons name="remove" size={13} color="#ef4444" />
-                        <Text className="text-danger text-xs font-semibold">Sell</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleOpenEditHolding(h)}
-                        className="bg-primary/15 px-2.5 py-1 rounded border border-primary/30 flex-row items-center gap-1"
-                      >
-                        <Ionicons name="pencil" size={12} color="#6366f1" />
-                        <Text className="text-primary text-xs font-semibold">Edit</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleDeleteHolding(h)}
-                        className="bg-card px-2.5 py-1 rounded border border-border flex-row items-center gap-1"
-                      >
-                        <Ionicons name="trash-outline" size={12} color="#ef4444" />
-                        <Text className="text-danger text-xs font-semibold">Delete</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
+                      ) : (
+                        <View className="flex-row justify-end items-center mt-2">
+                          <Text className="text-textSecondary text-[10px]">Tap to manage • Buy, Sell, Edit</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               )}
 
               {/* Suggestions Discovery Banner */}
@@ -1036,146 +1076,205 @@ export default function InvestmentsScreen() {
           )}
 
           {/* SEGMENT 4: IPO AI */}
-          {activeSegment === 'IPO' && (
-            <View className="gap-4 pb-12">
-              {/* Upcoming IPOs Header */}
-              <View className="flex-row justify-between items-center">
-                <View>
-                  <Text className="text-base font-bold text-text">
-                    Upcoming IPOs ({upcomingIPOs.length})
-                  </Text>
-                  <Text className="text-xs text-textSecondary mt-0.5">
-                    Companies listing soon on NSE / BSE
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setIpoName('');
-                    setIpoDetails('');
-                    setAnalysisResult(null);
-                    setAnalyzeModalVisible(true);
-                  }}
-                  className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1"
-                >
-                  <Ionicons name="sparkles" size={13} color="#ffffff" />
-                  <Text className="text-white text-xs font-bold">Custom AI Check</Text>
-                </TouchableOpacity>
-              </View>
+          {activeSegment === 'IPO' && (() => {
+            const openCount = upcomingIPOs.filter((i) => (i.status || '').toLowerCase() === 'open' || (i.status || '').toLowerCase() === 'active').length;
+            const upcomingCount = upcomingIPOs.length - openCount;
+            const filteredIPOs = upcomingIPOs.filter((ipo) => {
+              const s = (ipo.status || '').toLowerCase();
+              const isOpen = s === 'open' || s === 'active';
+              if (ipoFilter === 'OPEN') return isOpen;
+              if (ipoFilter === 'UPCOMING') return !isOpen;
+              return true;
+            });
 
-              {/* Upcoming IPOs List */}
-              {upcomingIPOs.length === 0 ? (
-                <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
-                  <Ionicons name="newspaper-outline" size={40} color="#64748b" />
-                  <Text className="text-text font-semibold text-sm mt-2">No Upcoming IPOs Found</Text>
-                  <Text className="text-textSecondary text-xs text-center mt-1">
-                    Pull down to refresh or check back later for newly announced issues.
-                  </Text>
+            return (
+              <View className="gap-4 pb-12">
+                {/* Upcoming IPOs Header */}
+                <View className="flex-row justify-between items-center">
+                  <View>
+                    <Text className="text-base font-bold text-text">
+                      Indian IPO Market ({upcomingIPOs.length})
+                    </Text>
+                    <Text className="text-xs text-textSecondary mt-0.5">
+                      Real-time mainboard issues on NSE & BSE
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIpoName('');
+                      setIpoDetails('');
+                      setAnalysisResult(null);
+                      setAnalyzeModalVisible(true);
+                    }}
+                    className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1"
+                  >
+                    <Ionicons name="sparkles" size={13} color="#ffffff" />
+                    <Text className="text-white text-xs font-bold">Custom AI Check</Text>
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                upcomingIPOs.map((ipo) => (
-                  <View key={ipo.id} className="bg-card p-4 rounded-xl border border-border">
-                    {/* Top Row: Company Name, Symbol, Status & GMP */}
-                    <View className="flex-row justify-between items-start">
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center gap-2 flex-wrap">
-                          <Text className="text-text font-bold text-base">{ipo.company_name}</Text>
-                          {ipo.symbol && (
-                            <View className="bg-background px-1.5 py-0.5 rounded border border-border">
-                              <Text className="text-[10px] text-textSecondary font-semibold">
-                                {ipo.symbol}
-                              </Text>
+
+                {/* Filter Pills */}
+                <View className="flex-row gap-2">
+                  <TouchableOpacity
+                    onPress={() => setIpoFilter('ALL')}
+                    className={`px-3 py-1.5 rounded-full border ${
+                      ipoFilter === 'ALL'
+                        ? 'bg-primary border-primary'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${ipoFilter === 'ALL' ? 'text-white' : 'text-textSecondary'}`}>
+                      All ({upcomingIPOs.length})
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setIpoFilter('OPEN')}
+                    className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 ${
+                      ipoFilter === 'OPEN'
+                        ? 'bg-emerald-600 border-emerald-600'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <View className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <Text className={`text-xs font-bold ${ipoFilter === 'OPEN' ? 'text-white' : 'text-emerald-400'}`}>
+                      Active / Open ({openCount})
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setIpoFilter('UPCOMING')}
+                    className={`px-3 py-1.5 rounded-full border ${
+                      ipoFilter === 'UPCOMING'
+                        ? 'bg-primary border-primary'
+                        : 'bg-card border-border'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${ipoFilter === 'UPCOMING' ? 'text-white' : 'text-textSecondary'}`}>
+                      Upcoming ({upcomingCount})
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Filtered IPOs List */}
+                {filteredIPOs.length === 0 ? (
+                  <View className="bg-card p-6 rounded-xl border border-border items-center justify-center">
+                    <Ionicons name="newspaper-outline" size={40} color="#64748b" />
+                    <Text className="text-text font-semibold text-sm mt-2">No IPOs Found</Text>
+                    <Text className="text-textSecondary text-xs text-center mt-1">
+                      No issues currently matching the selected filter. Pull down to refresh.
+                    </Text>
+                  </View>
+                ) : (
+                  filteredIPOs.map((ipo) => {
+                    const isOpen = (ipo.status || '').toLowerCase() === 'open' || (ipo.status || '').toLowerCase() === 'active';
+                    return (
+                      <View
+                        key={ipo.id}
+                        className={`bg-card p-4 rounded-xl border ${
+                          isOpen ? 'border-emerald-500/50 shadow-sm' : 'border-border'
+                        }`}
+                      >
+                        {/* Top Row: Company Name, Symbol, Status & GMP */}
+                        <View className="flex-row justify-between items-start">
+                          <View className="flex-1 mr-2">
+                            <View className="flex-row items-center gap-2 flex-wrap">
+                              <Text className="text-text font-bold text-base">{ipo.company_name}</Text>
+                              {ipo.symbol && (
+                                <View className="bg-background px-1.5 py-0.5 rounded border border-border">
+                                  <Text className="text-[10px] text-textSecondary font-semibold">
+                                    {ipo.symbol}
+                                  </Text>
+                                </View>
+                              )}
                             </View>
-                          )}
-                        </View>
-                        <Text className="text-textSecondary text-xs mt-0.5">
-                          {ipo.sector || 'Mainboard Issue'}
-                        </Text>
-                      </View>
-
-                      <View className="items-end gap-1">
-                        <View
-                          className={`px-2 py-0.5 rounded-full ${
-                            ipo.status === 'Open'
-                              ? 'bg-success/20 border border-success'
-                              : 'bg-primary/20 border border-primary'
-                          }`}
-                        >
-                          <Text
-                            className={`text-[10px] font-bold ${
-                              ipo.status === 'Open' ? 'text-success' : 'text-primary'
-                            }`}
-                          >
-                            {ipo.status}
-                          </Text>
-                        </View>
-                        {ipo.expected_gmp && (
-                          <View className="bg-success/15 px-2 py-0.5 rounded border border-success/30">
-                            <Text className="text-[10px] text-success font-bold">
-                              GMP {ipo.expected_gmp}
+                            <Text className="text-textSecondary text-xs mt-0.5">
+                              {ipo.sector || 'Mainboard Issue'}
                             </Text>
                           </View>
+
+                          <View className="items-end gap-1">
+                            {isOpen ? (
+                              <View className="bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 rounded-full flex-row items-center gap-1">
+                                <View className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                <Text className="text-emerald-400 text-[10px] font-extrabold uppercase">
+                                  ACTIVE NOW
+                                </Text>
+                              </View>
+                            ) : (
+                              <View className="bg-primary/20 border border-primary/40 px-2 py-0.5 rounded-full">
+                                <Text className="text-primary text-[10px] font-bold uppercase">
+                                  {ipo.status || 'Upcoming'}
+                                </Text>
+                              </View>
+                            )}
+                            {ipo.expected_gmp && (
+                              <View className="bg-success/15 px-2 py-0.5 rounded border border-success/30">
+                                <Text className="text-[10px] text-success font-bold">
+                                  GMP {ipo.expected_gmp}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+
+                        {/* Issue Parameters Box */}
+                        <View className="bg-background p-2.5 rounded-lg border border-border mt-3 flex-row justify-between">
+                          <View>
+                            <Text className="text-textSecondary text-[10px] font-medium">Price Band</Text>
+                            <Text className="text-text text-xs font-bold mt-0.5">
+                              {ipo.price_band || 'TBA'}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text className="text-textSecondary text-[10px] font-medium">Issue Size</Text>
+                            <Text className="text-text text-xs font-bold mt-0.5">
+                              {ipo.issue_size || 'TBA'}
+                            </Text>
+                          </View>
+                          <View className="items-end">
+                            <Text className="text-textSecondary text-[10px] font-medium">Listing Date</Text>
+                            <Text className="text-text text-xs font-bold mt-0.5">
+                              {ipo.listing_date || 'Upcoming'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {ipo.description && (
+                          <Text className="text-textSecondary text-xs mt-2.5 leading-4" numberOfLines={2}>
+                            {ipo.description}
+                          </Text>
                         )}
+
+                        {/* Bottom Action Row */}
+                        <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-border">
+                          <View className="flex-row items-center gap-1">
+                            <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
+                            <Text className="text-[11px] text-textSecondary font-medium">
+                              {ipo.open_date && ipo.close_date
+                                ? `${ipo.open_date} - ${ipo.close_date}`
+                                : 'Dates Announced Soon'}
+                            </Text>
+                          </View>
+
+                          <TouchableOpacity
+                            onPress={() => handleEvaluateIPO(ipo)}
+                            className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
+                          >
+                            <Ionicons name="sparkles" size={13} color="#ffffff" />
+                            <Text className="text-white text-xs font-bold">Evaluate with AI</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
+                    );
+                  })
+                )}
+
+                {/* Custom Prompts Config Accordion/Card */}
+                <View className="bg-card p-4 rounded-xl border border-border mt-2">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons name="options-outline" size={18} color="#6366f1" />
+                      <Text className="text-text font-bold text-sm">AI Evaluation Prompts</Text>
                     </View>
-
-                    {/* Issue Parameters Box */}
-                    <View className="bg-background p-2.5 rounded-lg border border-border mt-3 flex-row justify-between">
-                      <View>
-                        <Text className="text-textSecondary text-[10px] font-medium">Price Band</Text>
-                        <Text className="text-text text-xs font-bold mt-0.5">
-                          {ipo.price_band || 'TBA'}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text className="text-textSecondary text-[10px] font-medium">Issue Size</Text>
-                        <Text className="text-text text-xs font-bold mt-0.5">
-                          {ipo.issue_size || 'TBA'}
-                        </Text>
-                      </View>
-                      <View className="items-end">
-                        <Text className="text-textSecondary text-[10px] font-medium">Listing Date</Text>
-                        <Text className="text-text text-xs font-bold mt-0.5">
-                          {ipo.listing_date || 'Upcoming'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {ipo.description && (
-                      <Text className="text-textSecondary text-xs mt-2.5 leading-4" numberOfLines={2}>
-                        {ipo.description}
-                      </Text>
-                    )}
-
-                    {/* Bottom Action Row */}
-                    <View className="flex-row justify-between items-center mt-3 pt-2.5 border-t border-border">
-                      <View className="flex-row items-center gap-1">
-                        <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
-                        <Text className="text-[11px] text-textSecondary">
-                          {ipo.open_date && ipo.close_date
-                            ? `${ipo.open_date} - ${ipo.close_date}`
-                            : 'Dates TBA'}
-                        </Text>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() => handleEvaluateIPO(ipo)}
-                        className="bg-accent px-3 py-1.5 rounded-lg flex-row items-center gap-1.5"
-                      >
-                        <Ionicons name="sparkles" size={13} color="#ffffff" />
-                        <Text className="text-white text-xs font-bold">Evaluate with AI</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
-              )}
-
-              {/* Custom Prompts Config Accordion/Card */}
-              <View className="bg-card p-4 rounded-xl border border-border mt-2">
-                <View className="flex-row items-center justify-between mb-1">
-                  <View className="flex-row items-center gap-2">
-                    <Ionicons name="options-outline" size={18} color="#6366f1" />
-                    <Text className="text-text font-bold text-sm">AI Evaluation Prompts</Text>
-                  </View>
                   <TouchableOpacity
                     onPress={() => {
                       setEditingPromptId(null);
@@ -1228,486 +1327,530 @@ export default function InvestmentsScreen() {
                 ))}
               </View>
             </View>
-          )}
-        </ScrollView>
-      )}
+          );
+        })()}
+      </ScrollView>
+    )}
 
       {/* MODAL 1: ADD TRANSACTION */}
       <Modal visible={txModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">Record Investment</Text>
-              <TouchableOpacity onPress={() => setTxModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Buy / Sell Toggle */}
-            <View className="flex-row bg-background rounded-lg p-1 border border-border mb-3">
-              <TouchableOpacity
-                onPress={() => setTxType('BUY')}
-                className={`flex-1 py-2 items-center rounded ${txType === 'BUY' ? 'bg-success' : 'bg-transparent'}`}
-              >
-                <Text className={`font-bold text-xs ${txType === 'BUY' ? 'text-white' : 'text-textSecondary'}`}>BUY</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setTxType('SELL')}
-                className={`flex-1 py-2 items-center rounded ${txType === 'SELL' ? 'bg-danger' : 'bg-transparent'}`}
-              >
-                <Text className={`font-bold text-xs ${txType === 'SELL' ? 'text-white' : 'text-textSecondary'}`}>SELL</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Ticker / Symbol (e.g. RELIANCE.NS)</Text>
-            <View className="relative mb-2">
-              <TextInput
-                value={txSymbol}
-                onChangeText={handleTxSymbolChange}
-                placeholder="Type symbol (e.g. INFY, TATA, RELIANCE)..."
-                placeholderTextColor="#64748b"
-                autoCapitalize="characters"
-                className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-              />
-              {isTxSearching && (
-                <ActivityIndicator
-                  size="small"
-                  color="#6366f1"
-                  style={{ position: 'absolute', right: 12, top: 12 }}
-                />
-              )}
-            </View>
-
-            {/* Autocomplete Dropdown */}
-            {txSuggestions.length > 0 && (
-              <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
-                <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
-                  Matching Stocks ({txSuggestions.length})
-                </Text>
-                <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                  {txSuggestions.map((item) => (
-                    <TouchableOpacity
-                      key={item.symbol}
-                      onPress={() => handleSelectTxSuggestion(item)}
-                      className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
-                    >
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center gap-1.5">
-                          <Text className="text-text font-bold text-xs">{item.symbol}</Text>
-                          <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
-                            {item.exchange}
-                          </Text>
-                        </View>
-                        <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                      </View>
-                      {item.current_price && (
-                        <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
-                      )}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end bg-black/60">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              className="w-full justify-end"
+            >
+              <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[90%]">
+                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">Record Investment</Text>
+                    <TouchableOpacity onPress={() => setTxModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
                     </TouchableOpacity>
-                  ))}
+                  </View>
+
+                  {/* Buy / Sell Toggle */}
+                  <View className="flex-row bg-background rounded-lg p-1 border border-border mb-3">
+                    <TouchableOpacity
+                      onPress={() => setTxType('BUY')}
+                      className={`flex-1 py-2 items-center rounded ${txType === 'BUY' ? 'bg-success' : 'bg-transparent'}`}
+                    >
+                      <Text className={`font-bold text-xs ${txType === 'BUY' ? 'text-white' : 'text-textSecondary'}`}>BUY</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setTxType('SELL')}
+                      className={`flex-1 py-2 items-center rounded ${txType === 'SELL' ? 'bg-danger' : 'bg-transparent'}`}
+                    >
+                      <Text className={`font-bold text-xs ${txType === 'SELL' ? 'text-white' : 'text-textSecondary'}`}>SELL</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <Text className="text-textSecondary text-xs mb-1">Ticker / Symbol (e.g. RELIANCE.NS)</Text>
+                  <View className="relative mb-2">
+                    <TextInput
+                      value={txSymbol}
+                      onChangeText={handleTxSymbolChange}
+                      placeholder="Type symbol (e.g. INFY, TATA, RELIANCE)..."
+                      placeholderTextColor="#64748b"
+                      autoCapitalize="characters"
+                      className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                    />
+                    {isTxSearching && (
+                      <ActivityIndicator
+                        size="small"
+                        color="#6366f1"
+                        style={{ position: 'absolute', right: 12, top: 12 }}
+                      />
+                    )}
+                  </View>
+
+                  {/* Autocomplete Dropdown */}
+                  {txSuggestions.length > 0 && (
+                    <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
+                      <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
+                        Matching Stocks ({txSuggestions.length})
+                      </Text>
+                      <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                        {txSuggestions.map((item) => (
+                          <TouchableOpacity
+                            key={item.symbol}
+                            onPress={() => handleSelectTxSuggestion(item)}
+                            className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
+                          >
+                            <View className="flex-1 mr-2">
+                              <View className="flex-row items-center gap-1.5">
+                                <Text className="text-text font-bold text-xs">{item.symbol}</Text>
+                                <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
+                                  {item.exchange}
+                                </Text>
+                              </View>
+                              <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
+                                {item.name}
+                              </Text>
+                            </View>
+                            {item.current_price && (
+                              <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  <View className="flex-row gap-3 mb-4">
+                    <View className="flex-1">
+                      <Text className="text-textSecondary text-xs mb-1">Quantity</Text>
+                      <TextInput
+                        value={txQty}
+                        onChangeText={setTxQty}
+                        placeholder="e.g. 10"
+                        placeholderTextColor="#64748b"
+                        keyboardType="numeric"
+                        className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-textSecondary text-xs mb-1">Price per Share (₹)</Text>
+                      <TextInput
+                        value={txPrice}
+                        onChangeText={setTxPrice}
+                        placeholder="e.g. 2450.00"
+                        placeholderTextColor="#64748b"
+                        keyboardType="numeric"
+                        className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                      />
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleCreateTransaction}
+                    disabled={txSubmitting}
+                    className="bg-primary py-3 rounded-xl items-center"
+                  >
+                    {txSubmitting ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text className="text-white font-bold text-base">Save Transaction</Text>
+                    )}
+                  </TouchableOpacity>
                 </ScrollView>
               </View>
-            )}
-
-            <View className="flex-row gap-3 mb-4">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Quantity</Text>
-                <TextInput
-                  value={txQty}
-                  onChangeText={setTxQty}
-                  placeholder="e.g. 10"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Price per Share (₹)</Text>
-                <TextInput
-                  value={txPrice}
-                  onChangeText={setTxPrice}
-                  placeholder="e.g. 2450.00"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleCreateTransaction}
-              disabled={txSubmitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {txSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Transaction</Text>
-              )}
-            </TouchableOpacity>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* MODAL 2: ADD TO WATCHLIST */}
       <Modal visible={wlModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">Add to Watchlist</Text>
-              <TouchableOpacity onPress={() => setWlModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Symbol (e.g. TCS.NS, NIFTY50.NS)</Text>
-            <View className="relative mb-2">
-              <TextInput
-                value={wlSymbol}
-                onChangeText={handleWlSymbolChange}
-                placeholder="Type symbol (e.g. HDFC, TATA, INFY)..."
-                placeholderTextColor="#64748b"
-                autoCapitalize="characters"
-                className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-              />
-              {isWlSearching && (
-                <ActivityIndicator
-                  size="small"
-                  color="#6366f1"
-                  style={{ position: 'absolute', right: 12, top: 12 }}
-                />
-              )}
-            </View>
-
-            {/* Autocomplete Dropdown */}
-            {wlSuggestions.length > 0 && (
-              <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
-                <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
-                  Matching Stocks ({wlSuggestions.length})
-                </Text>
-                <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                  {wlSuggestions.map((item) => (
-                    <TouchableOpacity
-                      key={item.symbol}
-                      onPress={() => handleSelectWlSuggestion(item)}
-                      className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
-                    >
-                      <View className="flex-1 mr-2">
-                        <View className="flex-row items-center gap-1.5">
-                          <Text className="text-text font-bold text-xs">{item.symbol}</Text>
-                          <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
-                            {item.exchange}
-                          </Text>
-                        </View>
-                        <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                      </View>
-                      {item.current_price && (
-                        <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
-                      )}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end bg-black/60">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              className="w-full justify-end"
+            >
+              <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[85%]">
+                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">Add to Watchlist</Text>
+                    <TouchableOpacity onPress={() => setWlModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
                     </TouchableOpacity>
-                  ))}
+                  </View>
+
+                  <Text className="text-textSecondary text-xs mb-1">Symbol (e.g. TCS.NS, NIFTY50.NS)</Text>
+                  <View className="relative mb-2">
+                    <TextInput
+                      value={wlSymbol}
+                      onChangeText={handleWlSymbolChange}
+                      placeholder="Type symbol (e.g. HDFC, TATA, INFY)..."
+                      placeholderTextColor="#64748b"
+                      autoCapitalize="characters"
+                      className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                    />
+                    {isWlSearching && (
+                      <ActivityIndicator
+                        size="small"
+                        color="#6366f1"
+                        style={{ position: 'absolute', right: 12, top: 12 }}
+                      />
+                    )}
+                  </View>
+
+                  {/* Autocomplete Dropdown */}
+                  {wlSuggestions.length > 0 && (
+                    <View className="bg-background border border-primary/40 rounded-xl mb-3 p-1.5 max-h-36">
+                      <Text className="text-[10px] font-bold text-primary px-2 py-1 uppercase">
+                        Matching Stocks ({wlSuggestions.length})
+                      </Text>
+                      <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                        {wlSuggestions.map((item) => (
+                          <TouchableOpacity
+                            key={item.symbol}
+                            onPress={() => handleSelectWlSuggestion(item)}
+                            className="p-2 border-b border-border/40 flex-row justify-between items-center rounded"
+                          >
+                            <View className="flex-1 mr-2">
+                              <View className="flex-row items-center gap-1.5">
+                                <Text className="text-text font-bold text-xs">{item.symbol}</Text>
+                                <Text className="text-[9px] bg-card px-1 py-0.5 rounded text-textSecondary">
+                                  {item.exchange}
+                                </Text>
+                              </View>
+                              <Text className="text-textSecondary text-[11px]" numberOfLines={1}>
+                                {item.name}
+                              </Text>
+                            </View>
+                            {item.current_price && (
+                              <Text className="text-primary font-bold text-xs">₹{item.current_price}</Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  <Text className="text-textSecondary text-xs mb-1">Target Price Alert (Optional ₹)</Text>
+                  <TextInput
+                    value={wlTargetPrice}
+                    onChangeText={setWlTargetPrice}
+                    placeholder="e.g. 1500"
+                    placeholderTextColor="#64748b"
+                    keyboardType="numeric"
+                    className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-4"
+                  />
+
+                  <TouchableOpacity
+                    onPress={handleAddToWatchlist}
+                    disabled={wlSubmitting}
+                    className="bg-primary py-3 rounded-xl items-center"
+                  >
+                    {wlSubmitting ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text className="text-white font-bold text-base">Add Symbol</Text>
+                    )}
+                  </TouchableOpacity>
                 </ScrollView>
               </View>
-            )}
-
-            <Text className="text-textSecondary text-xs mb-1">Target Price Alert (Optional ₹)</Text>
-            <TextInput
-              value={wlTargetPrice}
-              onChangeText={setWlTargetPrice}
-              placeholder="e.g. 1500"
-              placeholderTextColor="#64748b"
-              keyboardType="numeric"
-              className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-4"
-            />
-
-            <TouchableOpacity
-              onPress={handleAddToWatchlist}
-              disabled={wlSubmitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {wlSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Add Symbol</Text>
-              )}
-            </TouchableOpacity>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* MODAL 3: ADD/EDIT IPO PROMPT */}
       <Modal visible={promptModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[85%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">
-                {editingPromptId ? 'Edit Analysis Prompt' : 'New IPO Prompt'}
-              </Text>
-              <TouchableOpacity onPress={() => setPromptModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Prompt Name</Text>
-            <TextInput
-              value={promptName}
-              onChangeText={setPromptName}
-              placeholder="e.g. Listing Gains & GMP Strategy"
-              placeholderTextColor="#64748b"
-              className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-            />
-
-            <Text className="text-textSecondary text-xs mb-1">Prompt System Instructions</Text>
-            <TextInput
-              value={promptContent}
-              onChangeText={setPromptContent}
-              placeholder="Define exactly what the AI should evaluate (valuation, GMP, risk, verdict: APPLY / AVOID)..."
-              placeholderTextColor="#64748b"
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-              className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3 h-32"
-            />
-
-            <TouchableOpacity
-              onPress={() => setPromptIsDefault(!promptIsDefault)}
-              className="flex-row items-center gap-2 mb-4"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end bg-black/60">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              className="w-full justify-end"
             >
-              <Ionicons
-                name={promptIsDefault ? 'checkbox' : 'square-outline'}
-                size={20}
-                color={promptIsDefault ? '#6366f1' : '#94a3b8'}
-              />
-              <Text className="text-text text-sm">Set as default IPO analysis prompt</Text>
-            </TouchableOpacity>
+              <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[88%]">
+                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">
+                      {editingPromptId ? 'Edit Analysis Prompt' : 'New IPO Prompt'}
+                    </Text>
+                    <TouchableOpacity onPress={() => setPromptModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
 
-            <TouchableOpacity
-              onPress={handleSavePrompt}
-              disabled={promptSubmitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {promptSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Prompt</Text>
-              )}
-            </TouchableOpacity>
+                  <Text className="text-textSecondary text-xs mb-1">Prompt Name</Text>
+                  <TextInput
+                    value={promptName}
+                    onChangeText={setPromptName}
+                    placeholder="e.g. Listing Gains & GMP Strategy"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                  />
+
+                  <Text className="text-textSecondary text-xs mb-1">Prompt System Instructions</Text>
+                  <TextInput
+                    value={promptContent}
+                    onChangeText={setPromptContent}
+                    placeholder="Define exactly what the AI should evaluate (valuation, GMP, risk, verdict: APPLY / AVOID)..."
+                    placeholderTextColor="#64748b"
+                    multiline
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                    className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3 h-32"
+                  />
+
+                  <TouchableOpacity
+                    onPress={() => setPromptIsDefault(!promptIsDefault)}
+                    className="flex-row items-center gap-2 mb-4"
+                  >
+                    <Ionicons
+                      name={promptIsDefault ? 'checkbox' : 'square-outline'}
+                      size={20}
+                      color={promptIsDefault ? '#6366f1' : '#94a3b8'}
+                    />
+                    <Text className="text-text text-sm">Set as default IPO analysis prompt</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleSavePrompt}
+                    disabled={promptSubmitting}
+                    className="bg-primary py-3 rounded-xl items-center"
+                  >
+                    {promptSubmitting ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text className="text-white font-bold text-base">Save Prompt</Text>
+                    )}
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* MODAL 4: RUN IPO AI ANALYSIS */}
       <Modal visible={analyzeModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[90%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="sparkles" size={20} color="#f59e0b" />
-                <Text className="text-lg font-bold text-text">AI IPO Evaluation</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAnalyzeModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end bg-black/60">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              className="w-full justify-end"
+            >
+              <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[90%]">
+                <View className="flex-row justify-between items-center mb-4">
+                  <View className="flex-row items-center gap-2">
+                    <Ionicons name="sparkles" size={20} color="#f59e0b" />
+                    <Text className="text-lg font-bold text-text">AI IPO Evaluation</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setAnalyzeModalVisible(false)}>
+                    <Ionicons name="close" size={24} color="#94a3b8" />
+                  </TouchableOpacity>
+                </View>
 
-            {!analysisResult ? (
-              <ScrollView>
-                <Text className="text-textSecondary text-xs mb-1">Select Analysis System Prompt</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-3">
-                  {prompts.map((p) => (
+                {!analysisResult ? (
+                  <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                    <Text className="text-textSecondary text-xs mb-1">Select Analysis System Prompt</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row gap-2 mb-3">
+                      {prompts.map((p) => (
+                        <TouchableOpacity
+                          key={p.id}
+                          onPress={() => setSelectedPromptId(p.id)}
+                          className={`px-3 py-1.5 rounded-lg border ${
+                            selectedPromptId === p.id
+                              ? 'bg-primary border-primary'
+                              : 'bg-background border-border'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              selectedPromptId === p.id ? 'text-white' : 'text-textSecondary'
+                            }`}
+                          >
+                            {p.name} {p.is_default ? '★' : ''}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+
+                    <Text className="text-textSecondary text-xs mb-1">IPO / Company Name</Text>
+                    <TextInput
+                      value={ipoName}
+                      onChangeText={setIpoName}
+                      placeholder="e.g. Swiggy, Hyundai India, Ola Electric"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3"
+                    />
+
+                    <Text className="text-textSecondary text-xs mb-1">Financial Highlights / GMP Notes (Optional)</Text>
+                    <TextInput
+                      value={ipoDetails}
+                      onChangeText={setIpoDetails}
+                      placeholder="e.g. Issue size 10,000 Cr, Price band ₹370-390, GMP ~15%, P/E 45"
+                      placeholderTextColor="#64748b"
+                      multiline
+                      numberOfLines={4}
+                      textAlignVertical="top"
+                      className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-4 h-24"
+                    />
+
                     <TouchableOpacity
-                      key={p.id}
-                      onPress={() => setSelectedPromptId(p.id)}
-                      className={`px-3 py-1.5 rounded-lg border ${
-                        selectedPromptId === p.id
-                          ? 'bg-primary border-primary'
-                          : 'bg-background border-border'
-                      }`}
+                      onPress={handleRunAnalysis}
+                      disabled={analyzing}
+                      className="bg-accent py-3 rounded-xl items-center flex-row justify-center gap-2"
                     >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          selectedPromptId === p.id ? 'text-white' : 'text-textSecondary'
-                        }`}
-                      >
-                        {p.name} {p.is_default ? '★' : ''}
-                      </Text>
+                      {analyzing ? (
+                        <>
+                          <ActivityIndicator color="#ffffff" size="small" />
+                          <Text className="text-white font-bold text-base">Analyzing with AI...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="sparkles" size={18} color="#ffffff" />
+                          <Text className="text-white font-bold text-base">Generate Evaluation</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  </ScrollView>
+                ) : (
+                  <ScrollView className="max-h-[80%]" keyboardShouldPersistTaps="handled">
+                    <View className="bg-background p-3 rounded-lg border border-border mb-3">
+                      <Text className="text-text font-bold text-lg">{analysisResult.ipo_name}</Text>
+                      <Text className="text-primary text-xs font-semibold mt-0.5">
+                        Evaluated with: {analysisResult.used_prompt_name}
+                      </Text>
+                    </View>
 
-                <Text className="text-textSecondary text-xs mb-1">IPO / Company Name</Text>
-                <TextInput
-                  value={ipoName}
-                  onChangeText={setIpoName}
-                  placeholder="e.g. Swiggy, Hyundai India, Ola Electric"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-3"
-                />
+                    <View className="bg-background p-4 rounded-xl border border-border mb-4">
+                      <Text className="text-text text-sm leading-6">
+                        {analysisResult.analysis_markdown}
+                      </Text>
+                    </View>
 
-                <Text className="text-textSecondary text-xs mb-1">Financial Highlights / GMP Notes (Optional)</Text>
-                <TextInput
-                  value={ipoDetails}
-                  onChangeText={setIpoDetails}
-                  placeholder="e.g. Issue size 10,000 Cr, Price band ₹370-390, GMP ~15%, P/E 45"
-                  placeholderTextColor="#64748b"
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text mb-4 h-24"
-                />
-
-                <TouchableOpacity
-                  onPress={handleRunAnalysis}
-                  disabled={analyzing}
-                  className="bg-accent py-3 rounded-xl items-center flex-row justify-center gap-2"
-                >
-                  {analyzing ? (
-                    <>
-                      <ActivityIndicator color="#ffffff" size="small" />
-                      <Text className="text-white font-bold text-base">Analyzing with AI...</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons name="sparkles" size={18} color="#ffffff" />
-                      <Text className="text-white font-bold text-base">Generate Evaluation</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            ) : (
-              <ScrollView className="max-h-[80%]">
-                <View className="bg-background p-3 rounded-lg border border-border mb-3">
-                  <Text className="text-text font-bold text-lg">{analysisResult.ipo_name}</Text>
-                  <Text className="text-primary text-xs font-semibold mt-0.5">
-                    Evaluated with: {analysisResult.used_prompt_name}
-                  </Text>
-                </View>
-
-                <View className="bg-background p-4 rounded-xl border border-border mb-4">
-                  <Text className="text-text text-sm leading-6">
-                    {analysisResult.analysis_markdown}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => setAnalysisResult(null)}
-                  className="bg-primary py-3 rounded-xl items-center"
-                >
-                  <Text className="text-white font-bold text-sm">Analyze Another IPO</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            )}
+                    <TouchableOpacity
+                      onPress={() => setAnalysisResult(null)}
+                      className="bg-primary py-3 rounded-xl items-center"
+                    >
+                      <Text className="text-white font-bold text-sm">Analyze Another IPO</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+                )}
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* MODAL 5: EDIT HOLDING */}
       <Modal visible={editHoldingModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-1 mr-2">
-                <Text className="text-lg font-bold text-text">Edit Stock Holding</Text>
-                <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
-                  {editingHolding?.asset?.symbol} • {editingHolding?.asset?.name}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  setEditHoldingModalVisible(false);
-                  setEditingHolding(null);
-                }}
-              >
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="bg-background p-3 rounded-lg border border-border mb-3 flex-row justify-between items-center">
-              <View>
-                <Text className="text-textSecondary text-[11px]">Current Market Price (LTP)</Text>
-                <Text className="text-text font-bold text-sm">
-                  {formatCurrency(editingHolding?.asset?.current_price || 0)}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="text-textSecondary text-[11px]">Holding Value</Text>
-                <Text className="text-text font-bold text-sm">
-                  {formatCurrency(editingHolding?.current_value || 0)}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Quantity (Shares)</Text>
-                <TextInput
-                  value={editHoldingQty}
-                  onChangeText={setEditHoldingQty}
-                  placeholder="e.g. 25"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Average Buy Price (₹)</Text>
-                <TextInput
-                  value={editHoldingAvgPrice}
-                  onChangeText={setEditHoldingAvgPrice}
-                  placeholder="e.g. 1540.00"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
-                />
-              </View>
-            </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Notes (Optional)</Text>
-            <TextInput
-              value={editHoldingNotes}
-              onChangeText={setEditHoldingNotes}
-              placeholder="e.g. Long term SIP, target ₹2000"
-              placeholderTextColor="#64748b"
-              className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-            />
-
-            <View className="bg-background/80 p-2.5 rounded-lg border border-border mb-4 flex-row justify-between items-center">
-              <Text className="text-textSecondary text-xs">Recalculated Invested Value:</Text>
-              <Text className="text-text font-bold text-sm">
-                {formatCurrency(
-                  (parseFloat(editHoldingQty) || 0) * (parseFloat(editHoldingAvgPrice) || 0)
-                )}
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleSaveEditHolding}
-              disabled={editHoldingSubmitting}
-              className="bg-primary py-3 rounded-xl items-center mb-2"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-end bg-black/60">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              className="w-full justify-end"
             >
-              {editHoldingSubmitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Changes</Text>
-              )}
-            </TouchableOpacity>
+              <View className="bg-card p-5 rounded-t-2xl border-t border-border max-h-[88%]">
+                <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-1 mr-2">
+                      <Text className="text-lg font-bold text-text">Edit Stock Holding</Text>
+                      <Text className="text-textSecondary text-xs mt-0.5" numberOfLines={1}>
+                        {editingHolding?.asset?.symbol} • {editingHolding?.asset?.name}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditHoldingModalVisible(false);
+                        setEditingHolding(null);
+                      }}
+                    >
+                      <Ionicons name="close" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
 
-            {editingHolding && (
-              <TouchableOpacity
-                onPress={() => handleDeleteHolding(editingHolding)}
-                disabled={editHoldingSubmitting}
-                className="bg-danger/15 border border-danger/30 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5"
-              >
-                <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                <Text className="text-danger font-bold text-sm">Delete Stock from Portfolio</Text>
-              </TouchableOpacity>
-            )}
+                  <View className="bg-background p-3 rounded-lg border border-border mb-3 flex-row justify-between items-center">
+                    <View>
+                      <Text className="text-textSecondary text-[11px]">Current Market Price (LTP)</Text>
+                      <Text className="text-text font-bold text-sm">
+                        {formatCurrency(editingHolding?.asset?.current_price || 0)}
+                      </Text>
+                    </View>
+                    <View className="items-end">
+                      <Text className="text-textSecondary text-[11px]">Holding Value</Text>
+                      <Text className="text-text font-bold text-sm">
+                        {formatCurrency(editingHolding?.current_value || 0)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View className="flex-row gap-3 mb-3">
+                    <View className="flex-1">
+                      <Text className="text-textSecondary text-xs mb-1">Quantity (Shares)</Text>
+                      <TextInput
+                        value={editHoldingQty}
+                        onChangeText={setEditHoldingQty}
+                        placeholder="e.g. 25"
+                        placeholderTextColor="#64748b"
+                        keyboardType="numeric"
+                        className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                      />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-textSecondary text-xs mb-1">Average Buy Price (₹)</Text>
+                      <TextInput
+                        value={editHoldingAvgPrice}
+                        onChangeText={setEditHoldingAvgPrice}
+                        placeholder="e.g. 1540.00"
+                        placeholderTextColor="#64748b"
+                        keyboardType="numeric"
+                        className="bg-background border border-border rounded-lg px-3 py-2.5 text-text"
+                      />
+                    </View>
+                  </View>
+
+                  <Text className="text-textSecondary text-xs mb-1">Notes (Optional)</Text>
+                  <TextInput
+                    value={editHoldingNotes}
+                    onChangeText={setEditHoldingNotes}
+                    placeholder="e.g. Long term SIP, target ₹2000"
+                    placeholderTextColor="#64748b"
+                    className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                  />
+
+                  <View className="bg-background/80 p-2.5 rounded-lg border border-border mb-4 flex-row justify-between items-center">
+                    <Text className="text-textSecondary text-xs">Recalculated Invested Value:</Text>
+                    <Text className="text-text font-bold text-sm">
+                      {formatCurrency(
+                        (parseFloat(editHoldingQty) || 0) * (parseFloat(editHoldingAvgPrice) || 0)
+                      )}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleSaveEditHolding}
+                    disabled={editHoldingSubmitting}
+                    className="bg-primary py-3 rounded-xl items-center mb-2"
+                  >
+                    {editHoldingSubmitting ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Text className="text-white font-bold text-base">Save Changes</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  {editingHolding && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteHolding(editingHolding)}
+                      disabled={editHoldingSubmitting}
+                      className="bg-danger/15 border border-danger/30 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5"
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      <Text className="text-danger font-bold text-sm">Delete Stock from Portfolio</Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </View>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );

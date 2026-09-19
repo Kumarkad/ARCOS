@@ -8,6 +8,18 @@ import '../global.css';
 
 const queryClient = new QueryClient();
 
+import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
+
+function RootContent() {
+  const { isDarkMode, colors } = useTheme();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <Slot />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+    </View>
+  );
+}
+
 export default function RootLayout() {
   const { isInitialized, isAuthenticated, initialize } = useAuthStore();
   const segments = useSegments();
@@ -41,10 +53,9 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <View style={{ flex: 1, backgroundColor: '#0f0f23' }}>
-        <Slot />
-        <StatusBar style="light" />
-      </View>
+      <ThemeProvider>
+        <RootContent />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

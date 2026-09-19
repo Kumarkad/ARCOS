@@ -83,13 +83,14 @@ export default function ChatScreen() {
         throw new Error(response.message || 'Could not get response');
       }
     } catch (err: any) {
+      const errMsg = err?.response?.data?.detail || err?.message || 'Network error or backend unreachable. Please verify server connection.';
       setMessages((prev) => [
         ...prev,
         {
           id: `err-${Date.now()}`,
           session_id: sessionId || '',
           role: 'assistant',
-          content: 'Sorry, I ran into an error processing that. Please try again.',
+          content: `⚠️ JARVIS Assistant Error: ${errMsg}`,
           created_at: new Date().toISOString(),
         },
       ]);

@@ -10,6 +10,10 @@ import {
   TextInput,
   Switch,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -352,99 +356,108 @@ export default function VehicleScreen() {
 
         {/* ADD BIKE MODAL */}
         <Modal visible={addBikeModalVisible} animationType="slide" transparent>
-          <View className="flex-1 justify-end bg-black/70">
-            <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-xl font-bold text-text">Add Vehicle</Text>
-                <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#9ca3af" />
-                </TouchableOpacity>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Brand & Model Dropdowns */}
-                <BrandModelPicker
-                  selectedBrand={formBikeMake}
-                  selectedModel={formBikeModel}
-                  onSelectBrand={(brand) => {
-                    setFormBikeMake(brand);
-                    setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
-                  }}
-                  onSelectModel={(model) => {
-                    setFormBikeModel(model);
-                    setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
-                  }}
-                />
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="flex-1"
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View className="flex-1 justify-end bg-black/70">
+                <TouchableWithoutFeedback>
+                  <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+                    <View className="flex-row justify-between items-center mb-4">
+                      <Text className="text-xl font-bold text-text">Add Vehicle</Text>
+                      <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
+                        <Ionicons name="close" size={24} color="#9ca3af" />
+                      </TouchableOpacity>
+                    </View>
+                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                      {/* Brand & Model Dropdowns */}
+                      <BrandModelPicker
+                        selectedBrand={formBikeMake}
+                        selectedModel={formBikeModel}
+                        onSelectBrand={(brand) => {
+                          setFormBikeMake(brand);
+                          setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                        }}
+                        onSelectModel={(model) => {
+                          setFormBikeModel(model);
+                          setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                        }}
+                      />
 
-                <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
-                <TextInput
-                  value={formBikeName}
-                  onChangeText={setFormBikeName}
-                  placeholder="e.g. My Commuter (defaults to Brand Model)"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-                />
-                <View className="flex-row gap-2 mb-3">
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Year</Text>
-                    <TextInput
-                      value={formBikeYear}
-                      onChangeText={setFormBikeYear}
-                      keyboardType="numeric"
-                      placeholder="e.g. 2024"
-                      placeholderTextColor="#64748b"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
+                      <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
+                      <TextInput
+                        value={formBikeName}
+                        onChangeText={setFormBikeName}
+                        placeholder="e.g. My Commuter (defaults to Brand Model)"
+                        placeholderTextColor="#64748b"
+                        className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                      />
+                      <View className="flex-row gap-2 mb-3">
+                        <View className="flex-1">
+                          <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                          <TextInput
+                            value={formBikeYear}
+                            onChangeText={setFormBikeYear}
+                            keyboardType="numeric"
+                            placeholder="e.g. 2024"
+                            placeholderTextColor="#64748b"
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                          <TextInput
+                            value={formBikeRegNum}
+                            onChangeText={setFormBikeRegNum}
+                            placeholder="e.g. MH 02 AB 1234"
+                            placeholderTextColor="#64748b"
+                            autoCapitalize="characters"
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                          />
+                        </View>
+                      </View>
+                      <View className="flex-row gap-2 mb-3">
+                        <View className="flex-1">
+                          <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
+                          <TextInput
+                            value={formBikeOdo}
+                            onChangeText={setFormBikeOdo}
+                            keyboardType="numeric"
+                            placeholder="0"
+                            placeholderTextColor="#64748b"
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                          <TextInput
+                            value={formBikeTankCapacity}
+                            onChangeText={setFormBikeTankCapacity}
+                            keyboardType="numeric"
+                            placeholder="13"
+                            placeholderTextColor="#64748b"
+                            className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                          />
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={handleSaveNewBike}
+                        disabled={submitting}
+                        className="bg-primary py-3 rounded-xl items-center mt-2 mb-4"
+                      >
+                        {submitting ? (
+                          <ActivityIndicator color="#ffffff" />
+                        ) : (
+                          <Text className="text-white font-bold text-base">Save Vehicle</Text>
+                        )}
+                      </TouchableOpacity>
+                    </ScrollView>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
-                    <TextInput
-                      value={formBikeRegNum}
-                      onChangeText={setFormBikeRegNum}
-                      placeholder="e.g. MH 02 AB 1234"
-                      placeholderTextColor="#64748b"
-                      autoCapitalize="characters"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
-                  </View>
-                </View>
-                <View className="flex-row gap-2 mb-3">
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
-                    <TextInput
-                      value={formBikeOdo}
-                      onChangeText={setFormBikeOdo}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor="#64748b"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
-                    <TextInput
-                      value={formBikeTankCapacity}
-                      onChangeText={setFormBikeTankCapacity}
-                      keyboardType="numeric"
-                      placeholder="13"
-                      placeholderTextColor="#64748b"
-                      className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                    />
-                  </View>
-                </View>
-                <TouchableOpacity
-                  onPress={handleSaveNewBike}
-                  disabled={submitting}
-                  className="bg-primary py-3 rounded-xl items-center mt-2 mb-4"
-                >
-                  {submitting ? (
-                    <ActivityIndicator color="#ffffff" />
-                  ) : (
-                    <Text className="text-white font-bold text-base">Save Vehicle</Text>
-                  )}
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-          </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
       </SafeAreaView>
     );
@@ -759,504 +772,555 @@ export default function VehicleScreen() {
 
       {/* MODAL: ADD FUEL */}
       <Modal visible={fuelModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">Log Fuel Refill</Text>
-              <TouchableOpacity onPress={() => setFuelModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/60">
+              <TouchableWithoutFeedback>
+                <View className="bg-card p-5 rounded-t-3xl border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">Log Fuel Refill</Text>
+                    <TouchableOpacity onPress={() => setFuelModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
 
-            <View className="flex-row gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Odometer (km)</Text>
-                <TextInput
-                  value={fuelOdo}
-                  onChangeText={setFuelOdo}
-                  placeholder="e.g. 1250"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Fuel (Liters)</Text>
-                <TextInput
-                  value={fuelLiters}
-                  onChangeText={setFuelLiters}
-                  placeholder="e.g. 10.5"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-            </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <View className="flex-row gap-3 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Odometer (km)</Text>
+                        <TextInput
+                          value={fuelOdo}
+                          onChangeText={setFuelOdo}
+                          placeholder="e.g. 1250"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Fuel (Liters)</Text>
+                        <TextInput
+                          value={fuelLiters}
+                          onChangeText={setFuelLiters}
+                          placeholder="e.g. 10.5"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
 
-            <View className="flex-row gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Total Cost (₹)</Text>
-                <TextInput
-                  value={fuelCost}
-                  onChangeText={setFuelCost}
-                  placeholder="e.g. 1050"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Fuel Station</Text>
-                <TextInput
-                  value={fuelStation}
-                  onChangeText={setFuelStation}
-                  placeholder="e.g. Shell, IOCL"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-            </View>
+                    <View className="flex-row gap-3 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Total Cost (₹)</Text>
+                        <TextInput
+                          value={fuelCost}
+                          onChangeText={setFuelCost}
+                          placeholder="e.g. 1050"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Fuel Station</Text>
+                        <TextInput
+                          value={fuelStation}
+                          onChangeText={setFuelStation}
+                          placeholder="e.g. Shell, IOCL"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
 
-            <View className="flex-row justify-between items-center py-2 mb-4 border-t border-b border-border">
-              <View>
-                <Text className="text-text font-semibold text-sm">Full Tank Refill?</Text>
-                <Text className="text-textSecondary text-xs">Enables automatic km/L mileage calculation</Text>
-              </View>
-              <Switch
-                value={isFullTank}
-                onValueChange={setIsFullTank}
-                trackColor={{ false: '#334155', true: '#6366f1' }}
-              />
-            </View>
+                    <View className="flex-row justify-between items-center py-2 mb-4 border-t border-b border-border">
+                      <View>
+                        <Text className="text-text font-semibold text-sm">Full Tank Refill?</Text>
+                        <Text className="text-textSecondary text-xs">Enables automatic km/L mileage calculation</Text>
+                      </View>
+                      <Switch
+                        value={isFullTank}
+                        onValueChange={setIsFullTank}
+                        trackColor={{ false: '#334155', true: '#6366f1' }}
+                      />
+                    </View>
 
-            <TouchableOpacity
-              onPress={handleSaveFuel}
-              disabled={submitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {submitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Fuel Record</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+                    <TouchableOpacity
+                      onPress={handleSaveFuel}
+                      disabled={submitting}
+                      className="bg-primary py-3 rounded-xl items-center mb-2"
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-bold text-base">Save Fuel Record</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* MODAL: ADD SERVICE */}
       <Modal visible={maintModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">Record Maintenance</Text>
-              <TouchableOpacity onPress={() => setMaintModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/60">
+              <TouchableWithoutFeedback>
+                <View className="bg-card p-5 rounded-t-3xl border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">Record Maintenance</Text>
+                    <TouchableOpacity onPress={() => setMaintModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
 
-            <Text className="text-textSecondary text-xs mb-1">Service Type</Text>
-            <View className="flex-row flex-wrap gap-2 mb-3">
-              {['GENERAL_SERVICE', 'OIL_CHANGE', 'BRAKES', 'CHAIN', 'TYRE'].map((st) => (
-                <TouchableOpacity
-                  key={st}
-                  onPress={() => setMaintType(st)}
-                  className={`px-3 py-1.5 rounded-lg border ${
-                    maintType === st ? 'bg-primary border-primary' : 'bg-background border-border'
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      maintType === st ? 'text-white' : 'text-textSecondary'
-                    }`}
-                  >
-                    {st.replace('_', ' ')}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <Text className="text-textSecondary text-xs mb-1">Service Type</Text>
+                    <View className="flex-row flex-wrap gap-2 mb-3">
+                      {['GENERAL_SERVICE', 'OIL_CHANGE', 'BRAKES', 'CHAIN', 'TYRE'].map((st) => (
+                        <TouchableOpacity
+                          key={st}
+                          onPress={() => setMaintType(st)}
+                          className={`px-3 py-1.5 rounded-lg border ${
+                            maintType === st ? 'bg-primary border-primary' : 'bg-background border-border'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              maintType === st ? 'text-white' : 'text-textSecondary'
+                            }`}
+                          >
+                            {st.replace('_', ' ')}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
 
-            <View className="flex-row gap-3 mb-3">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Odometer (km)</Text>
-                <TextInput
-                  value={maintOdo}
-                  onChangeText={setMaintOdo}
-                  keyboardType="numeric"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Cost (₹)</Text>
-                <TextInput
-                  value={maintCost}
-                  onChangeText={setMaintCost}
-                  keyboardType="numeric"
-                  placeholder="e.g. 1200"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-            </View>
+                    <View className="flex-row gap-3 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Odometer (km)</Text>
+                        <TextInput
+                          value={maintOdo}
+                          onChangeText={setMaintOdo}
+                          keyboardType="numeric"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Cost (₹)</Text>
+                        <TextInput
+                          value={maintCost}
+                          onChangeText={setMaintCost}
+                          keyboardType="numeric"
+                          placeholder="e.g. 1200"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
 
-            <View className="flex-row gap-3 mb-4">
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Workshop Name</Text>
-                <TextInput
-                  value={maintWorkshop}
-                  onChangeText={setMaintWorkshop}
-                  placeholder="e.g. Authorized Center"
-                  placeholderTextColor="#64748b"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-              <View className="flex-1">
-                <Text className="text-textSecondary text-xs mb-1">Next Service (km)</Text>
-                <TextInput
-                  value={nextServiceOdo}
-                  onChangeText={setNextServiceOdo}
-                  placeholder="e.g. 5000"
-                  placeholderTextColor="#64748b"
-                  keyboardType="numeric"
-                  className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                />
-              </View>
-            </View>
+                    <View className="flex-row gap-3 mb-4">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Workshop Name</Text>
+                        <TextInput
+                          value={maintWorkshop}
+                          onChangeText={setMaintWorkshop}
+                          placeholder="e.g. Authorized Center"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Next Service (km)</Text>
+                        <TextInput
+                          value={nextServiceOdo}
+                          onChangeText={setNextServiceOdo}
+                          placeholder="e.g. 5000"
+                          placeholderTextColor="#64748b"
+                          keyboardType="numeric"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
 
-            <TouchableOpacity
-              onPress={handleSaveMaintenance}
-              disabled={submitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {submitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Service Record</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+                    <TouchableOpacity
+                      onPress={handleSaveMaintenance}
+                      disabled={submitting}
+                      className="bg-primary py-3 rounded-xl items-center mb-2"
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-bold text-base">Save Service Record</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* MODAL: ADD VEHICLE EXPENSE */}
       <Modal visible={expModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/60">
-          <View className="bg-card p-5 rounded-t-2xl border-t border-border">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-lg font-bold text-text">Vehicle Expense</Text>
-              <TouchableOpacity onPress={() => setExpModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#94a3b8" />
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/60">
+              <TouchableWithoutFeedback>
+                <View className="bg-card p-5 rounded-t-3xl border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-lg font-bold text-text">Vehicle Expense</Text>
+                    <TouchableOpacity onPress={() => setExpModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#94a3b8" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <Text className="text-textSecondary text-xs mb-1">Expense Type</Text>
+                    <View className="flex-row flex-wrap gap-2 mb-3">
+                      {['INSURANCE', 'PUC', 'TOLL', 'PARKING', 'ACCESSORY', 'FINE'].map((et) => (
+                        <TouchableOpacity
+                          key={et}
+                          onPress={() => setExpType(et)}
+                          className={`px-3 py-1.5 rounded-lg border ${
+                            expType === et ? 'bg-primary border-primary' : 'bg-background border-border'
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-semibold ${
+                              expType === et ? 'text-white' : 'text-textSecondary'
+                            }`}
+                          >
+                            {et}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <Text className="text-textSecondary text-xs mb-1">Amount (₹)</Text>
+                    <TextInput
+                      value={expAmount}
+                      onChangeText={setExpAmount}
+                      keyboardType="numeric"
+                      placeholder="e.g. 150"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                    />
+
+                    <Text className="text-textSecondary text-xs mb-1">Notes (Optional)</Text>
+                    <TextInput
+                      value={expNotes}
+                      onChangeText={setExpNotes}
+                      placeholder="e.g. Fastag toll recharge, parking slip"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-4"
+                    />
+
+                    <TouchableOpacity
+                      onPress={handleSaveExpense}
+                      disabled={submitting}
+                      className="bg-primary py-3 rounded-xl items-center mb-2"
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-bold text-base">Save Vehicle Expense</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
             </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Expense Type</Text>
-            <View className="flex-row flex-wrap gap-2 mb-3">
-              {['INSURANCE', 'PUC', 'TOLL', 'PARKING', 'ACCESSORY', 'FINE'].map((et) => (
-                <TouchableOpacity
-                  key={et}
-                  onPress={() => setExpType(et)}
-                  className={`px-3 py-1.5 rounded-lg border ${
-                    expType === et ? 'bg-primary border-primary' : 'bg-background border-border'
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      expType === et ? 'text-white' : 'text-textSecondary'
-                    }`}
-                  >
-                    {et}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text className="text-textSecondary text-xs mb-1">Amount (₹)</Text>
-            <TextInput
-              value={expAmount}
-              onChangeText={setExpAmount}
-              keyboardType="numeric"
-              placeholder="e.g. 150"
-              placeholderTextColor="#64748b"
-              className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-            />
-
-            <Text className="text-textSecondary text-xs mb-1">Notes (Optional)</Text>
-            <TextInput
-              value={expNotes}
-              onChangeText={setExpNotes}
-              placeholder="e.g. Fastag toll recharge, parking slip"
-              placeholderTextColor="#64748b"
-              className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-4"
-            />
-
-            <TouchableOpacity
-              onPress={handleSaveExpense}
-              disabled={submitting}
-              className="bg-primary py-3 rounded-xl items-center"
-            >
-              {submitting ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Save Vehicle Expense</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* EDIT VEHICLE MODAL */}
       <Modal visible={editBikeModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/70">
-          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="pencil" size={20} color="#6366f1" />
-                <Text className="text-xl font-bold text-text">Edit Vehicle Details</Text>
-              </View>
-              <TouchableOpacity onPress={() => setEditBikeModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Brand & Model Dropdowns */}
-              <BrandModelPicker
-                selectedBrand={formBikeMake}
-                selectedModel={formBikeModel}
-                onSelectBrand={(brand) => {
-                  setFormBikeMake(brand);
-                  setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
-                }}
-                onSelectModel={(model) => {
-                  setFormBikeModel(model);
-                  setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
-                }}
-              />
-
-              <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
-              <TextInput
-                value={formBikeName}
-                onChangeText={setFormBikeName}
-                placeholder="e.g. My Vehicle (defaults to Brand Model)"
-                placeholderTextColor="#64748b"
-                className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-              />
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Year</Text>
-                  <TextInput
-                    value={formBikeYear}
-                    onChangeText={setFormBikeYear}
-                    keyboardType="numeric"
-                    placeholder="e.g. 2024"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
-                  <TextInput
-                    value={formBikeRegNum}
-                    onChangeText={setFormBikeRegNum}
-                    placeholder="e.g. MH 02 AB 1234"
-                    placeholderTextColor="#64748b"
-                    autoCapitalize="characters"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Current Odometer (km)</Text>
-                  <TextInput
-                    value={formBikeOdo}
-                    onChangeText={setFormBikeOdo}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
-                  <TextInput
-                    value={formBikeTankCapacity}
-                    onChangeText={setFormBikeTankCapacity}
-                    keyboardType="numeric"
-                    placeholder="13"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
-                <View className="flex-row gap-2">
-                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => setFormBikeFuelType(type)}
-                      className={`flex-1 py-2 rounded-lg border items-center ${
-                        formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
-                        }`}
-                      >
-                        {type}
-                      </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/70">
+              <TouchableWithoutFeedback>
+                <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons name="pencil" size={20} color="#6366f1" />
+                      <Text className="text-xl font-bold text-text">Edit Vehicle Details</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setEditBikeModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#9ca3af" />
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+                  </View>
 
-              <TouchableOpacity
-                onPress={handleSaveEditBike}
-                disabled={submitting}
-                className="bg-primary py-3 rounded-xl items-center mb-4"
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text className="text-white font-bold text-base">Save Vehicle Changes</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    {/* Brand & Model Dropdowns */}
+                    <BrandModelPicker
+                      selectedBrand={formBikeMake}
+                      selectedModel={formBikeModel}
+                      onSelectBrand={(brand) => {
+                        setFormBikeMake(brand);
+                        setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                      }}
+                      onSelectModel={(model) => {
+                        setFormBikeModel(model);
+                        setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                      }}
+                    />
+
+                    <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
+                    <TextInput
+                      value={formBikeName}
+                      onChangeText={setFormBikeName}
+                      placeholder="e.g. My Vehicle (defaults to Brand Model)"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                    />
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                        <TextInput
+                          value={formBikeYear}
+                          onChangeText={setFormBikeYear}
+                          keyboardType="numeric"
+                          placeholder="e.g. 2024"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                        <TextInput
+                          value={formBikeRegNum}
+                          onChangeText={setFormBikeRegNum}
+                          placeholder="e.g. MH 02 AB 1234"
+                          placeholderTextColor="#64748b"
+                          autoCapitalize="characters"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Current Odometer (km)</Text>
+                        <TextInput
+                          value={formBikeOdo}
+                          onChangeText={setFormBikeOdo}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                        <TextInput
+                          value={formBikeTankCapacity}
+                          onChangeText={setFormBikeTankCapacity}
+                          keyboardType="numeric"
+                          placeholder="13"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
+
+                    <View className="mb-4">
+                      <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
+                      <View className="flex-row gap-2">
+                        {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            onPress={() => setFormBikeFuelType(type)}
+                            className={`flex-1 py-2 rounded-lg border items-center ${
+                              formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                              }`}
+                            >
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleSaveEditBike}
+                      disabled={submitting}
+                      className="bg-primary py-3 rounded-xl items-center mb-4"
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-bold text-base">Save Vehicle Changes</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ADD VEHICLE MODAL (Secondary) */}
       <Modal visible={addBikeModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/70">
-          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="add-circle" size={22} color="#6366f1" />
-                <Text className="text-xl font-bold text-text">Add Vehicle</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Brand & Model Dropdowns */}
-              <BrandModelPicker
-                selectedBrand={formBikeMake}
-                selectedModel={formBikeModel}
-                onSelectBrand={(brand) => {
-                  setFormBikeMake(brand);
-                  setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
-                }}
-                onSelectModel={(model) => {
-                  setFormBikeModel(model);
-                  setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
-                }}
-              />
-
-              <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
-              <TextInput
-                value={formBikeName}
-                onChangeText={setFormBikeName}
-                placeholder="e.g. Daily Commuter (defaults to Brand Model)"
-                placeholderTextColor="#64748b"
-                className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
-              />
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Year</Text>
-                  <TextInput
-                    value={formBikeYear}
-                    onChangeText={setFormBikeYear}
-                    keyboardType="numeric"
-                    placeholder="e.g. 2024"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
-                  <TextInput
-                    value={formBikeRegNum}
-                    onChangeText={setFormBikeRegNum}
-                    placeholder="e.g. MH 02 AB 1234"
-                    placeholderTextColor="#64748b"
-                    autoCapitalize="characters"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
-                  <TextInput
-                    value={formBikeOdo}
-                    onChangeText={setFormBikeOdo}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
-                  <TextInput
-                    value={formBikeTankCapacity}
-                    onChangeText={setFormBikeTankCapacity}
-                    keyboardType="numeric"
-                    placeholder="13"
-                    placeholderTextColor="#64748b"
-                    className="bg-background border border-border rounded-lg px-3 py-2 text-text"
-                  />
-                </View>
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
-                <View className="flex-row gap-2">
-                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => setFormBikeFuelType(type)}
-                      className={`flex-1 py-2 rounded-lg border items-center ${
-                        formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
-                          formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
-                        }`}
-                      >
-                        {type}
-                      </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/70">
+              <TouchableWithoutFeedback>
+                <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons name="add-circle" size={22} color="#6366f1" />
+                      <Text className="text-xl font-bold text-text">Add Vehicle</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#9ca3af" />
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+                  </View>
 
-              <TouchableOpacity
-                onPress={handleSaveNewBike}
-                disabled={submitting}
-                className="bg-primary py-3 rounded-xl items-center mb-4"
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <Text className="text-white font-bold text-base">Add Vehicle</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    {/* Brand & Model Dropdowns */}
+                    <BrandModelPicker
+                      selectedBrand={formBikeMake}
+                      selectedModel={formBikeModel}
+                      onSelectBrand={(brand) => {
+                        setFormBikeMake(brand);
+                        setFormBikeName(`${brand} ${formBikeModel || ''}`.trim());
+                      }}
+                      onSelectModel={(model) => {
+                        setFormBikeModel(model);
+                        setFormBikeName(`${formBikeMake || ''} ${model}`.trim());
+                      }}
+                    />
+
+                    <Text className="text-textSecondary text-xs mb-1">Vehicle Name (Optional Nickname)</Text>
+                    <TextInput
+                      value={formBikeName}
+                      onChangeText={setFormBikeName}
+                      placeholder="e.g. Daily Commuter (defaults to Brand Model)"
+                      placeholderTextColor="#64748b"
+                      className="bg-background border border-border rounded-lg px-3 py-2 text-text mb-3"
+                    />
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Year</Text>
+                        <TextInput
+                          value={formBikeYear}
+                          onChangeText={setFormBikeYear}
+                          keyboardType="numeric"
+                          placeholder="e.g. 2024"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Registration No.</Text>
+                        <TextInput
+                          value={formBikeRegNum}
+                          onChangeText={setFormBikeRegNum}
+                          placeholder="e.g. MH 02 AB 1234"
+                          placeholderTextColor="#64748b"
+                          autoCapitalize="characters"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Initial Odometer (km)</Text>
+                        <TextInput
+                          value={formBikeOdo}
+                          onChangeText={setFormBikeOdo}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1">Tank Capacity (L)</Text>
+                        <TextInput
+                          value={formBikeTankCapacity}
+                          onChangeText={setFormBikeTankCapacity}
+                          keyboardType="numeric"
+                          placeholder="13"
+                          placeholderTextColor="#64748b"
+                          className="bg-background border border-border rounded-lg px-3 py-2 text-text"
+                        />
+                      </View>
+                    </View>
+
+                    <View className="mb-4">
+                      <Text className="text-textSecondary text-xs mb-1">Fuel Type</Text>
+                      <View className="flex-row gap-2">
+                        {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            onPress={() => setFormBikeFuelType(type)}
+                            className={`flex-1 py-2 rounded-lg border items-center ${
+                              formBikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-semibold ${
+                                formBikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                              }`}
+                            >
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleSaveNewBike}
+                      disabled={submitting}
+                      className="bg-primary py-3 rounded-xl items-center mb-4"
+                    >
+                      {submitting ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Text className="text-white font-bold text-base">Add Vehicle</Text>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

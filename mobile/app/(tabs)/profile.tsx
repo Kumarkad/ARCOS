@@ -10,6 +10,9 @@ import {
   Modal,
   Alert,
   Platform,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +21,7 @@ import { useAuthStore } from '../../src/stores/authStore';
 import { bikeApi } from '../../src/api/bikes';
 import { Bike } from '../../src/types/bike';
 import { COLORS } from '../../src/utils/constants';
+import { useTheme } from '../../src/context/ThemeContext';
 import { BrandModelPicker } from '../../src/components/vehicle/BrandModelPicker';
 
 const POPULAR_CURRENCIES = [
@@ -34,6 +38,7 @@ const POPULAR_CURRENCIES = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, updateProfile, refreshUser, logout } = useAuthStore();
+  const { isDarkMode, setTheme, colors } = useTheme();
 
   // Personal details state
   const [fullName, setFullName] = useState(user?.full_name || '');
@@ -283,7 +288,7 @@ export default function ProfileScreen() {
             className="p-1 -ml-1"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
           <Text className="text-xl font-bold text-text">Profile & Settings</Text>
         </View>
@@ -291,14 +296,14 @@ export default function ProfileScreen() {
           onPress={handleLogout}
           className="flex-row items-center gap-1 bg-danger/10 px-3 py-1.5 rounded-full border border-danger/30"
         >
-          <Ionicons name="log-out-outline" size={16} color={COLORS.danger} />
+          <Ionicons name="log-out-outline" size={16} color={colors.danger} />
           <Text className="text-danger text-xs font-semibold">Logout</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         className="flex-1 p-4"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* User Card */}
         <View className="bg-card p-5 rounded-2xl border border-border mb-5 flex-row items-center gap-4 shadow-sm">
@@ -402,24 +407,69 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Appearance & Theme Section */}
+        <View className="bg-card p-4 rounded-2xl border border-border mb-6">
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center gap-2">
+              <Ionicons name="color-palette" size={18} color={colors.primary} />
+              <Text className="text-text font-bold text-base">App Appearance</Text>
+            </View>
+            <View className="bg-primary/20 px-2.5 py-0.5 rounded-full border border-primary/30">
+              <Text className="text-primary text-[10px] font-bold uppercase tracking-wider">
+                {isDarkMode ? 'Dark Theme' : 'Light Theme'}
+              </Text>
+            </View>
+          </View>
+
+          <Text className="text-textSecondary text-xs mb-3">
+            Choose your preferred color mode. High-contrast typography and WCAG AA compliance are automatically enabled.
+          </Text>
+
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => setTheme(true)}
+              className={`flex-1 p-3 rounded-xl border flex-row items-center justify-center gap-2 ${
+                isDarkMode ? 'bg-primary border-primary' : 'bg-background border-border'
+              }`}
+            >
+              <Ionicons name="moon" size={16} color={isDarkMode ? '#ffffff' : colors.textSecondary} />
+              <Text className={`font-bold text-xs ${isDarkMode ? 'text-white' : 'text-text'}`}>
+                Dark Mode
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setTheme(false)}
+              className={`flex-1 p-3 rounded-xl border flex-row items-center justify-center gap-2 ${
+                !isDarkMode ? 'bg-primary border-primary' : 'bg-background border-border'
+              }`}
+            >
+              <Ionicons name="sunny" size={16} color={!isDarkMode ? '#ffffff' : colors.textSecondary} />
+              <Text className={`font-bold text-xs ${!isDarkMode ? 'text-white' : 'text-text'}`}>
+                Light Mode
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Bike & Vehicle Management Section */}
         <View className="bg-card p-4 rounded-2xl border border-border mb-8">
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center gap-2">
-              <Ionicons name="bicycle" size={20} color={COLORS.primary} />
+              <Ionicons name="bicycle" size={20} color={colors.primary} />
               <Text className="text-text font-bold text-base">Vehicle Details</Text>
             </View>
             <TouchableOpacity
               onPress={openAddBikeModal}
               className="bg-primary/20 px-3 py-1.5 rounded-full border border-primary flex-row items-center gap-1"
             >
-              <Ionicons name="add" size={14} color={COLORS.primary} />
+              <Ionicons name="add" size={14} color={colors.primary} />
               <Text className="text-primary text-xs font-bold">Add Vehicle</Text>
             </TouchableOpacity>
           </View>
 
           {loadingBikes ? (
-            <ActivityIndicator size="small" color={COLORS.primary} className="py-6" />
+            <ActivityIndicator size="small" color={colors.primary} className="py-6" />
           ) : bikes.length === 0 ? (
             <View className="py-6 items-center px-4 bg-background/50 rounded-xl border border-dashed border-border">
               <Ionicons name="bicycle-outline" size={42} color="#6b7280" />
@@ -496,7 +546,7 @@ export default function ProfileScreen() {
                         onPress={() => handleSetPrimary(b)}
                         className="px-3 py-1.5 rounded-lg bg-card border border-border flex-row items-center gap-1"
                       >
-                        <Ionicons name="star-outline" size={13} color={COLORS.primary} />
+                        <Ionicons name="star-outline" size={13} color={colors.primary} />
                         <Text className="text-primary text-xs font-medium">Make Primary</Text>
                       </TouchableOpacity>
                     )}
@@ -504,14 +554,14 @@ export default function ProfileScreen() {
                       onPress={() => openEditBikeModal(b)}
                       className="px-3 py-1.5 rounded-lg bg-primary/20 border border-primary/40 flex-row items-center gap-1"
                     >
-                      <Ionicons name="pencil" size={13} color={COLORS.primary} />
+                      <Ionicons name="pencil" size={13} color={colors.primary} />
                       <Text className="text-primary text-xs font-medium">Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeleteBike(b)}
                       className="px-2.5 py-1.5 rounded-lg bg-danger/10 border border-danger/30 items-center justify-center"
                     >
-                      <Ionicons name="trash-outline" size={14} color={COLORS.danger} />
+                      <Ionicons name="trash-outline" size={14} color={colors.danger} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -523,266 +573,284 @@ export default function ProfileScreen() {
 
       {/* ADD VEHICLE MODAL */}
       <Modal visible={addBikeModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/70">
-          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="bicycle" size={22} color={COLORS.primary} />
-                <Text className="text-xl font-bold text-text">Add Vehicle</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Brand & Model Dropdowns */}
-              <BrandModelPicker
-                selectedBrand={bikeMake}
-                selectedModel={bikeModel}
-                onSelectBrand={(brand) => {
-                  setBikeMake(brand);
-                  setBikeName(`${brand} ${bikeModel || ''}`.trim());
-                }}
-                onSelectModel={(model) => {
-                  setBikeModel(model);
-                  setBikeName(`${bikeMake || ''} ${model}`.trim());
-                }}
-              />
-
-              <View className="mb-3">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
-                <TextInput
-                  className="bg-background text-text p-3 rounded-xl border border-border"
-                  placeholder="e.g. My Commuter (defaults to Brand Model)"
-                  placeholderTextColor="#6b7280"
-                  value={bikeName}
-                  onChangeText={setBikeName}
-                />
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Model Year</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. 2024"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeYear}
-                    onChangeText={setBikeYear}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Registration No.</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. MH 02 AB 1234"
-                    placeholderTextColor="#6b7280"
-                    autoCapitalize="characters"
-                    value={bikeRegNum}
-                    onChangeText={setBikeRegNum}
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Starting Odometer (km)</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeOdo}
-                    onChangeText={setBikeOdo}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Tank (Liters)</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. 13"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeTankCapacity}
-                    onChangeText={setBikeTankCapacity}
-                  />
-                </View>
-              </View>
-
-              <View className="mb-5">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Type</Text>
-                <View className="flex-row gap-2">
-                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => setBikeFuelType(type)}
-                      className={`flex-1 py-2.5 rounded-xl border items-center ${
-                        bikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-bold ${
-                          bikeFuelType === type ? 'text-white' : 'text-textSecondary'
-                        }`}
-                      >
-                        {type}
-                      </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/70">
+              <TouchableWithoutFeedback>
+                <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons name="bicycle" size={22} color={colors.primary} />
+                      <Text className="text-xl font-bold text-text">Add Vehicle</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setAddBikeModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#9ca3af" />
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+                  </View>
 
-              <TouchableOpacity
-                onPress={handleCreateBike}
-                disabled={submittingBike}
-                className="bg-primary py-3.5 rounded-xl items-center justify-center mb-4 flex-row gap-2"
-              >
-                {submittingBike ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
-                    <Text className="text-white font-bold text-sm">Save & Register Vehicle</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    {/* Brand & Model Dropdowns */}
+                    <BrandModelPicker
+                      selectedBrand={bikeMake}
+                      selectedModel={bikeModel}
+                      onSelectBrand={(brand) => {
+                        setBikeMake(brand);
+                        setBikeName(`${brand} ${bikeModel || ''}`.trim());
+                      }}
+                      onSelectModel={(model) => {
+                        setBikeModel(model);
+                        setBikeName(`${bikeMake || ''} ${model}`.trim());
+                      }}
+                    />
+
+                    <View className="mb-3">
+                      <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
+                      <TextInput
+                        className="bg-background text-text p-3 rounded-xl border border-border"
+                        placeholder="e.g. My Commuter (defaults to Brand Model)"
+                        placeholderTextColor="#6b7280"
+                        value={bikeName}
+                        onChangeText={setBikeName}
+                      />
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Model Year</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. 2024"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeYear}
+                          onChangeText={setBikeYear}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Registration No.</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. MH 02 AB 1234"
+                          placeholderTextColor="#6b7280"
+                          autoCapitalize="characters"
+                          value={bikeRegNum}
+                          onChangeText={setBikeRegNum}
+                        />
+                      </View>
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Starting Odometer (km)</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="0"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeOdo}
+                          onChangeText={setBikeOdo}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Tank (Liters)</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. 13"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeTankCapacity}
+                          onChangeText={setBikeTankCapacity}
+                        />
+                      </View>
+                    </View>
+
+                    <View className="mb-5">
+                      <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Type</Text>
+                      <View className="flex-row gap-2">
+                        {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            onPress={() => setBikeFuelType(type)}
+                            className={`flex-1 py-2.5 rounded-xl border items-center ${
+                              bikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-bold ${
+                                bikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                              }`}
+                            >
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleCreateBike}
+                      disabled={submittingBike}
+                      className="bg-primary py-3.5 rounded-xl items-center justify-center mb-4 flex-row gap-2"
+                    >
+                      {submittingBike ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={18} color="#ffffff" />
+                          <Text className="text-white font-bold text-sm">Save & Register Vehicle</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* EDIT VEHICLE MODAL */}
       <Modal visible={editBikeModalVisible} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/70">
-          <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <Ionicons name="pencil" size={20} color={COLORS.primary} />
-                <Text className="text-xl font-bold text-text">Edit Vehicle Details</Text>
-              </View>
-              <TouchableOpacity onPress={() => setEditBikeModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Brand & Model Dropdowns */}
-              <BrandModelPicker
-                selectedBrand={bikeMake}
-                selectedModel={bikeModel}
-                onSelectBrand={(brand) => {
-                  setBikeMake(brand);
-                  setBikeName(`${brand} ${bikeModel || ''}`.trim());
-                }}
-                onSelectModel={(model) => {
-                  setBikeModel(model);
-                  setBikeName(`${bikeMake || ''} ${model}`.trim());
-                }}
-              />
-
-              <View className="mb-3">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
-                <TextInput
-                  className="bg-background text-text p-3 rounded-xl border border-border"
-                  placeholder="e.g. My Vehicle (defaults to Brand Model)"
-                  placeholderTextColor="#6b7280"
-                  value={bikeName}
-                  onChangeText={setBikeName}
-                />
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Model Year</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. 2024"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeYear}
-                    onChangeText={setBikeYear}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Registration No.</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. MH 02 AB 1234"
-                    placeholderTextColor="#6b7280"
-                    autoCapitalize="characters"
-                    value={bikeRegNum}
-                    onChangeText={setBikeRegNum}
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row gap-2 mb-3">
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Current Odometer (km)</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="0"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeOdo}
-                    onChangeText={setBikeOdo}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Tank (Liters)</Text>
-                  <TextInput
-                    className="bg-background text-text p-3 rounded-xl border border-border"
-                    placeholder="e.g. 13"
-                    placeholderTextColor="#6b7280"
-                    keyboardType="numeric"
-                    value={bikeTankCapacity}
-                    onChangeText={setBikeTankCapacity}
-                  />
-                </View>
-              </View>
-
-              <View className="mb-5">
-                <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Type</Text>
-                <View className="flex-row gap-2">
-                  {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      onPress={() => setBikeFuelType(type)}
-                      className={`flex-1 py-2.5 rounded-xl border items-center ${
-                        bikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-bold ${
-                          bikeFuelType === type ? 'text-white' : 'text-textSecondary'
-                        }`}
-                      >
-                        {type}
-                      </Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          className="flex-1"
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 justify-end bg-black/70">
+              <TouchableWithoutFeedback>
+                <View className="bg-card rounded-t-3xl p-5 border-t border-border max-h-[85%]">
+                  <View className="flex-row justify-between items-center mb-4">
+                    <View className="flex-row items-center gap-2">
+                      <Ionicons name="pencil" size={20} color={colors.primary} />
+                      <Text className="text-xl font-bold text-text">Edit Vehicle Details</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setEditBikeModalVisible(false)}>
+                      <Ionicons name="close" size={24} color="#9ca3af" />
                     </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+                  </View>
 
-              <TouchableOpacity
-                onPress={handleUpdateBike}
-                disabled={submittingBike}
-                className="bg-primary py-3.5 rounded-xl items-center justify-center mb-4 flex-row gap-2"
-              >
-                {submittingBike ? (
-                  <ActivityIndicator color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-done" size={18} color="#ffffff" />
-                    <Text className="text-white font-bold text-sm">Save Changes</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+                  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    {/* Brand & Model Dropdowns */}
+                    <BrandModelPicker
+                      selectedBrand={bikeMake}
+                      selectedModel={bikeModel}
+                      onSelectBrand={(brand) => {
+                        setBikeMake(brand);
+                        setBikeName(`${brand} ${bikeModel || ''}`.trim());
+                      }}
+                      onSelectModel={(model) => {
+                        setBikeModel(model);
+                        setBikeName(`${bikeMake || ''} ${model}`.trim());
+                      }}
+                    />
+
+                    <View className="mb-3">
+                      <Text className="text-textSecondary text-xs mb-1 font-medium">Vehicle Name (Optional Nickname)</Text>
+                      <TextInput
+                        className="bg-background text-text p-3 rounded-xl border border-border"
+                        placeholder="e.g. My Vehicle (defaults to Brand Model)"
+                        placeholderTextColor="#6b7280"
+                        value={bikeName}
+                        onChangeText={setBikeName}
+                      />
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Model Year</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. 2024"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeYear}
+                          onChangeText={setBikeYear}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Registration No.</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. MH 02 AB 1234"
+                          placeholderTextColor="#6b7280"
+                          autoCapitalize="characters"
+                          value={bikeRegNum}
+                          onChangeText={setBikeRegNum}
+                        />
+                      </View>
+                    </View>
+
+                    <View className="flex-row gap-2 mb-3">
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Current Odometer (km)</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="0"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeOdo}
+                          onChangeText={setBikeOdo}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Tank (Liters)</Text>
+                        <TextInput
+                          className="bg-background text-text p-3 rounded-xl border border-border"
+                          placeholder="e.g. 13"
+                          placeholderTextColor="#6b7280"
+                          keyboardType="numeric"
+                          value={bikeTankCapacity}
+                          onChangeText={setBikeTankCapacity}
+                        />
+                      </View>
+                    </View>
+
+                    <View className="mb-5">
+                      <Text className="text-textSecondary text-xs mb-1 font-medium">Fuel Type</Text>
+                      <View className="flex-row gap-2">
+                        {['PETROL', 'ELECTRIC', 'DIESEL'].map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            onPress={() => setBikeFuelType(type)}
+                            className={`flex-1 py-2.5 rounded-xl border items-center ${
+                              bikeFuelType === type ? 'bg-primary border-primary' : 'bg-background border-border'
+                            }`}
+                          >
+                            <Text
+                              className={`text-xs font-bold ${
+                                bikeFuelType === type ? 'text-white' : 'text-textSecondary'
+                              }`}
+                            >
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleUpdateBike}
+                      disabled={submittingBike}
+                      className="bg-primary py-3.5 rounded-xl items-center justify-center mb-4 flex-row gap-2"
+                    >
+                      {submittingBike ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-done" size={18} color="#ffffff" />
+                          <Text className="text-white font-bold text-sm">Save Changes</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </ScrollView>
+                </View>
+              </TouchableWithoutFeedback>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

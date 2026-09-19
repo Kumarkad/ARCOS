@@ -174,15 +174,17 @@ class UpcomingIPOItem(BaseModel):
     id: str
     company_name: str
     symbol_tentative: Optional[str] = None
-    issue_size: str
-    price_band: str
-    open_date: str
-    close_date: str
+    symbol: Optional[str] = None
+    issue_size: Optional[str] = "TBA"
+    price_band: Optional[str] = "TBA"
+    open_date: Optional[str] = "Upcoming"
+    close_date: Optional[str] = "Upcoming"
     listing_date: Optional[str] = None
-    status: str  # UPCOMING, OPEN, CLOSED
+    status: str = "Upcoming"  # Open, Upcoming, Closed
     gmp_pct: Optional[float] = None
     expected_listing_gain: Optional[str] = None
-    lot_size: int
-    category: str
-    sector: str
-    description: str
+    expected_gmp: Optional[str] = None
+    lot_size: Optional[int] = 1
+    category: Optional[str] = "Mainboard"
+    sector: Optional[str] = "Mainboard Issue"
+    description: Optional[str] = None

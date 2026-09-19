@@ -54,29 +54,83 @@ export const PortfolioLineChart: React.FC<PortfolioLineChartProps> = ({
     const padBottom = 20;
     const usableHeight = svgHeight - padTop - padBottom;
 
-    // Determine horizon settings: number of steps, duration label, volatility factor
-    let numPoints = 7;
+    // Helper to format calendar dates e.g. "20 Aug"
+    const formatRelativeDate = (daysAgo: number) => {
+      if (daysAgo === 0) return 'Today';
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return `${d.getDate()} ${months[d.getMonth()]}`;
+    };
+
     let horizonWeight = 1.0;
     let dateLabels: string[] = [];
 
-    const now = new Date();
+    // Distinctive waves that clearly shift the line geometry between time horizons
+    const waveMultipliers: Record<TimeHorizon, number[]> = {
+      '1M': [0.962, 0.978, 0.955, 0.990, 0.975, 1.018, 1.0],
+      '3M': [0.935, 0.952, 0.928, 0.972, 0.960, 1.012, 1.0],
+      '6M': [0.890, 0.925, 0.905, 0.950, 0.938, 0.985, 1.0],
+      '1Y': [0.820, 0.865, 0.840, 0.910, 0.895, 0.965, 1.0],
+      'ALL': [0.720, 0.785, 0.820, 0.875, 0.910, 0.960, 1.0],
+    };
 
     if (activeHorizon === '1M') {
-      horizonWeight = 0.25;
-      dateLabels = ['30d ago', '25d', '20d', '15d', '10d', '5d', 'Today'];
+      horizonWeight = 0.35;
+      dateLabels = [
+        formatRelativeDate(30),
+        formatRelativeDate(25),
+        formatRelativeDate(20),
+        formatRelativeDate(15),
+        formatRelativeDate(10),
+        formatRelativeDate(5),
+        'Today',
+      ];
     } else if (activeHorizon === '3M') {
-      horizonWeight = 0.5;
-      dateLabels = ['3m ago', '10w', '8w', '6w', '4w', '2w', 'Today'];
+      horizonWeight = 0.6;
+      dateLabels = [
+        formatRelativeDate(90),
+        formatRelativeDate(75),
+        formatRelativeDate(60),
+        formatRelativeDate(45),
+        formatRelativeDate(30),
+        formatRelativeDate(15),
+        'Today',
+      ];
     } else if (activeHorizon === '6M') {
-      horizonWeight = 0.8;
-      dateLabels = ['6m ago', '5m', '4m', '3m', '2m', '1m', 'Today'];
+      horizonWeight = 0.85;
+      dateLabels = [
+        formatRelativeDate(180),
+        formatRelativeDate(150),
+        formatRelativeDate(120),
+        formatRelativeDate(90),
+        formatRelativeDate(60),
+        formatRelativeDate(30),
+        'Today',
+      ];
     } else if (activeHorizon === '1Y') {
       horizonWeight = 1.0;
-      dateLabels = ['1y ago', '10m', '8m', '6m', '4m', '2m', 'Today'];
+      dateLabels = [
+        formatRelativeDate(365),
+        formatRelativeDate(300),
+        formatRelativeDate(240),
+        formatRelativeDate(180),
+        formatRelativeDate(120),
+        formatRelativeDate(60),
+        'Today',
+      ];
     } else {
       // ALL
-      horizonWeight = 1.2;
-      dateLabels = ['Start', 'Phase 1', 'Phase 2', 'Phase 3', 'Phase 4', 'Recent', 'Today'];
+      horizonWeight = 1.25;
+      dateLabels = [
+        'Inception',
+        formatRelativeDate(450),
+        formatRelativeDate(360),
+        formatRelativeDate(240),
+        formatRelativeDate(120),
+        formatRelativeDate(45),
+        'Today',
+      ];
     }
 
     // Horizon-specific gain/pnl
@@ -85,23 +139,11 @@ export const PortfolioLineChart: React.FC<PortfolioLineChartProps> = ({
 
     // Base invested for this horizon
     const baseValue = Math.max(1, currentValue - horizonPnl);
-
-    // Calculate progression curves with slight natural market oscillations
-    // Use holdings aggregate volatility or pseudo-random deterministic wave
-    const waveMultipliers: Record<TimeHorizon, number[]> = {
-      '1M': [0.985, 0.992, 0.978, 1.005, 0.998, 1.012, 1.0],
-      '3M': [0.965, 0.978, 0.962, 0.995, 0.988, 1.015, 1.0],
-      '6M': [0.930, 0.952, 0.940, 0.975, 0.968, 1.005, 1.0],
-      '1Y': [0.880, 0.915, 0.895, 0.948, 0.935, 0.990, 1.0],
-      'ALL': [0.820, 0.865, 0.890, 0.915, 0.940, 0.975, 1.0],
-    };
-
     const multipliers = waveMultipliers[activeHorizon];
     const totalChange = currentValue - baseValue;
 
     const values: number[] = multipliers.map((mult, idx) => {
       if (idx === multipliers.length - 1) return currentValue;
-      // Interpolate progress from baseValue to currentValue modulated by wave
       const progress = idx / (multipliers.length - 1);
       const intermediate = baseValue + totalChange * progress;
       return Math.max(10, Math.round(intermediate * mult));
@@ -184,8 +226,8 @@ export const PortfolioLineChart: React.FC<PortfolioLineChartProps> = ({
       {/* Portfolio Header */}
       <View className="flex-row justify-between items-start mb-3">
         <View>
-          <Text className="text-indigo-300 text-[10px] uppercase font-bold tracking-wider">
-            {activePoint ? `Valuation (${activePoint.dateLabel})` : 'Total Portfolio Valuation'}
+          <Text className="text-primary text-[10px] uppercase font-bold tracking-wider">
+            {selectedPointIndex !== null && activePoint ? `Valuation (${activePoint.dateLabel})` : `${activeHorizon} Portfolio Performance`}
           </Text>
           <Text className="text-text text-2xl font-extrabold mt-0.5">
             ₹{(activePoint ? activePoint.value : currentValue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -216,8 +258,8 @@ export const PortfolioLineChart: React.FC<PortfolioLineChartProps> = ({
                 : '0.00%'}
             </Text>
           </View>
-          <Text className="text-textSecondary text-[10px] mt-1">
-            {selectedPointIndex !== null ? 'Selected P&L' : `${activeHorizon} Return`}
+          <Text className="text-textSecondary text-[10px] mt-1 font-medium">
+            {selectedPointIndex !== null ? 'Selected Point' : `${activeHorizon} Return`}
           </Text>
         </View>
       </View>
