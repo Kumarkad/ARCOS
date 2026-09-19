@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { useObserve } from 'expo-observe';
 import { useAuthStore } from '../../src/stores/authStore';
 import { getGreeting, formatINR } from '../../src/utils/formatting';
 import { expensesApi } from '../../src/api/expenses';
@@ -11,6 +13,7 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const router = useRouter();
   const greeting = getGreeting();
+  const { markInteractive } = useObserve();
 
   const {
     data: summaryData,
@@ -21,6 +24,12 @@ export default function HomeScreen() {
     queryKey: ['expense-summary'],
     queryFn: () => expensesApi.getExpenseSummary(),
   });
+
+  useEffect(() => {
+    if (!isLoading) {
+      markInteractive();
+    }
+  }, [isLoading, markInteractive]);
 
   const summary = summaryData?.data;
   const todayTotal = Number(summary?.today_total || 0);

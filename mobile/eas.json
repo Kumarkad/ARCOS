@@ -14,6 +14,7 @@
       "android": {
         "buildType": "apk"
       },
+      "uploadSourceMaps": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://arcos-9zh1ub7va-kumars-projects-430e6b6c.vercel.app/api/v1"
       }
@@ -22,6 +23,7 @@
       "android": {
         "buildType": "apk"
       },
+      "uploadSourceMaps": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://arcos-9zh1ub7va-kumars-projects-430e6b6c.vercel.app/api/v1"
       }

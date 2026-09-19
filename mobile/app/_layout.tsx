@@ -4,7 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from '../src/stores/authStore';
 import { View, ActivityIndicator } from 'react-native';
+import { Observe, ObserveRoot } from 'expo-observe';
 import '../global.css';
+
+// Configure EAS Observe with Expo Router integration at module scope
+Observe.configure({
+  integrations: {
+    'expo-router': true,
+  },
+});
 
 const queryClient = new QueryClient();
 
@@ -20,7 +28,7 @@ function RootContent() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const { isInitialized, isAuthenticated, initialize } = useAuthStore();
   const segments = useSegments();
   const router = useRouter();
@@ -59,3 +67,6 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+export default ObserveRoot.wrap(RootLayout);
+
