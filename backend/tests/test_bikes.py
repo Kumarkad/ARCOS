@@ -126,3 +126,89 @@ async def test_bike_lifecycle_and_mileage_calculation(db_session: AsyncSession, 
     assert deleted is True
     bikes_after_delete = await service.list_bikes(test_user.id)
     assert len(bikes_after_delete) == 0
+
+
+@pytest.mark.asyncio
+async def test_option_b_user_scenario_mileage(db_session: AsyncSession, test_user):
+    repo = BikeRepository(db_session)
+    service = BikeService(repo=repo, session=db_session)
+
+    ronin = await service.create_bike(
+        test_user.id,
+        BikeCreate(
+            name="TVS Ronin",
+            make="TVS",
+            model="Ronin 225",
+            initial_odometer=Decimal("0.0"),
+            fuel_tank_capacity=Decimal("14.0"),
+            fuel_type="PETROL",
+        ),
+    )
+
+    # 1. First baseline refill: 1600 km, 10 L
+    log1 = await service.record_fuel_log(
+        test_user.id,
+        ronin.id,
+        FuelLogCreate(
+            fuel_date=date(2026, 9, 10),
+            odometer_reading=Decimal("1600.0"),
+            fuel_amount_liters=Decimal("10.0"),
+            total_cost=Decimal("1110.00"),
+            is_full_tank=False,
+        ),
+    )
+    assert log1.distance_traveled is None
+    assert log1.calculated_mileage is None
+
+    # 2. Refill 2: 1983 km, 11 L -> (1983 - 1600) / 10 = 38.30 km/L
+    log2 = await service.record_fuel_log(
+        test_user.id,
+        ronin.id,
+        FuelLogCreate(
+            fuel_date=date(2026, 9, 12),
+            odometer_reading=Decimal("1983.0"),
+            fuel_amount_liters=Decimal("11.0"),
+            total_cost=Decimal("1235.74"),
+            is_full_tank=False,
+        ),
+    )
+    assert log2.distance_traveled == Decimal("383.0")
+    assert log2.calculated_mileage == Decimal("38.30")
+
+    # 3. Refill 3: 2283 km, 10 L -> (2283 - 1983) / 11 = 27.27 km/L
+    log3 = await service.record_fuel_log(
+        test_user.id,
+        ronin.id,
+        FuelLogCreate(
+            fuel_date=date(2026, 9, 15),
+            odometer_reading=Decimal("2283.0"),
+            fuel_amount_liters=Decimal("10.0"),
+            total_cost=Decimal("1117.10"),
+            is_full_tank=False,
+        ),
+    )
+    assert log3.distance_traveled == Decimal("300.0")
+    assert log3.calculated_mileage == Decimal("27.27")
+
+    # 4. Refill 4: 2581 km, 12.11 L -> (2581 - 2283) / 10 = 29.80 km/L
+    log4 = await service.record_fuel_log(
+        test_user.id,
+        ronin.id,
+        FuelLogCreate(
+            fuel_date=date(2026, 9, 18),
+            odometer_reading=Decimal("2581.0"),
+            fuel_amount_liters=Decimal("12.11"),
+            total_cost=Decimal("1352.81"),
+            is_full_tank=True,
+        ),
+    )
+    # The crucial assertion requested by the user: diff / 10 (298 / 10 = 29.80)
+    assert log4.distance_traveled == Decimal("298.0")
+    assert log4.calculated_mileage == Decimal("29.80")
+
+    # 5. Dashboard summary
+    dash = await service.get_dashboard(test_user.id, ronin.id)
+    assert dash.latest_mileage_kmpl == Decimal("29.80")
+    # Average: (383 + 300 + 298) / (10 + 11 + 10) = 981 / 31 = 31.65 km/L
+    assert dash.average_mileage_kmpl == Decimal("31.65")
+

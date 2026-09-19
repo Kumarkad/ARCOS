@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from app.repositories.bike_repo import BikeRepository
-from app.models.bike import Bike
+from app.models.bike import Bike, FuelLog
 from app.schemas.bike import (
     BikeCreate,
     BikeUpdate,
@@ -48,25 +48,73 @@ class BikeService:
         bike = await self.get_bike(user_id, bike_id)
         return await self.repo.delete_bike(bike)
 
+    async def _sync_and_recalculate_fuel_logs(self, bike_id: UUID) -> List[FuelLog]:
+        """
+        Chronologically calculates distance_traveled and calculated_mileage for all fuel logs
+        using Option B (trip fuel consumption = previous log's fuel liters).
+        The first/lowest odometer log is strictly baseline (distance=None, mileage=None).
+        """
+        logs = await self.repo.get_fuel_logs(bike_id, limit=200)
+        if not logs:
+            return []
+
+        # Sort chronologically (ascending odometer, then fuel_date)
+        sorted_logs = sorted(logs, key=lambda l: (l.odometer_reading, l.fuel_date))
+        changed = False
+
+        for i, log in enumerate(sorted_logs):
+            if i == 0:
+                # Baseline fill: Cannot calculate distance or mileage yet
+                if log.distance_traveled is not None or log.calculated_mileage is not None:
+                    log.distance_traveled = None
+                    log.calculated_mileage = None
+                    changed = True
+            else:
+                prev = sorted_logs[i - 1]
+                expected_dist = (
+                    log.odometer_reading - prev.odometer_reading
+                    if log.odometer_reading > prev.odometer_reading
+                    else None
+                )
+                expected_mileage = None
+                # Option B: Fuel consumed for this distance is the fuel filled at prev_log
+                if (
+                    expected_dist is not None
+                    and expected_dist > 0
+                    and prev.fuel_amount_liters
+                    and prev.fuel_amount_liters > 0
+                ):
+                    expected_mileage = round(expected_dist / prev.fuel_amount_liters, 2)
+
+                if (
+                    log.distance_traveled != expected_dist
+                    or log.calculated_mileage != expected_mileage
+                ):
+                    log.distance_traveled = expected_dist
+                    log.calculated_mileage = expected_mileage
+                    changed = True
+
+        if changed and self.session:
+            await self.session.commit()
+
+        # Return latest logs first (descending odometer, fuel_date)
+        return sorted(sorted_logs, key=lambda l: (l.odometer_reading, l.fuel_date), reverse=True)
+
     # Fuel Logs & Mileage Algorithm
     async def record_fuel_log(
         self, user_id: UUID, bike_id: UUID, data: FuelLogCreate
     ) -> FuelLogResponse:
         bike = await self.get_bike(user_id, bike_id)
 
-        # Look up previous log to calculate trip distance and mileage
+        # Look up previous log to calculate trip distance and mileage (Option B)
         prev_log = await self.repo.get_latest_fuel_log(bike_id)
         distance: Optional[Decimal] = None
         mileage: Optional[Decimal] = None
 
         if prev_log and data.odometer_reading > prev_log.odometer_reading:
             distance = data.odometer_reading - prev_log.odometer_reading
-            if data.fuel_amount_liters > 0:
-                mileage = round(distance / data.fuel_amount_liters, 2)
-        elif not prev_log and data.odometer_reading > bike.initial_odometer:
-            distance = data.odometer_reading - bike.initial_odometer
-            if data.fuel_amount_liters > 0:
-                mileage = round(distance / data.fuel_amount_liters, 2)
+            if prev_log.fuel_amount_liters and prev_log.fuel_amount_liters > 0:
+                mileage = round(distance / prev_log.fuel_amount_liters, 2)
 
         log = await self.repo.create_fuel_log(
             user_id=user_id,
@@ -82,11 +130,15 @@ class BikeService:
             if self.session:
                 await self.session.commit()
 
+        # Ensure all logs are chronologically synchronized
+        await self._sync_and_recalculate_fuel_logs(bike_id)
+        await self.session.refresh(log)
+
         return FuelLogResponse.model_validate(log)
 
     async def list_fuel_logs(self, user_id: UUID, bike_id: UUID) -> List[FuelLogResponse]:
         await self.get_bike(user_id, bike_id)
-        logs = await self.repo.get_fuel_logs(bike_id)
+        logs = await self._sync_and_recalculate_fuel_logs(bike_id)
         return [FuelLogResponse.model_validate(l) for l in logs]
 
     # Maintenance
@@ -124,7 +176,7 @@ class BikeService:
     # Dashboard & Cost Calculations
     async def get_dashboard(self, user_id: UUID, bike_id: UUID) -> BikeDashboardSummary:
         bike = await self.get_bike(user_id, bike_id)
-        fuel_logs = await self.repo.get_fuel_logs(bike_id, limit=100)
+        fuel_logs = await self._sync_and_recalculate_fuel_logs(bike_id)
         maintenance = await self.repo.get_maintenance_records(bike_id, limit=50)
         expenses = await self.repo.get_expenses(bike_id, limit=50)
 
@@ -134,31 +186,31 @@ class BikeService:
         # Fuel stats
         total_fuel_cost = sum((l.total_cost for l in fuel_logs), Decimal("0.0"))
         
-        # Calculate weighted average mileage for all segments with calculated_mileage
+        # Calculate weighted average mileage for all segments with calculated_mileage (Option B)
         total_mileage_distance = Decimal("0.0")
         total_mileage_fuel = Decimal("0.0")
         latest_mileage: Optional[Decimal] = None
 
-        for l in fuel_logs:
-            if l.calculated_mileage is not None:
-                if latest_mileage is None:
-                    latest_mileage = l.calculated_mileage
-                if l.distance_traveled is not None:
+        # Sorted ascending to accurately map distance to previous fuel
+        sorted_asc = sorted(fuel_logs, key=lambda l: (l.odometer_reading, l.fuel_date))
+        for i, l in enumerate(sorted_asc):
+            if l.calculated_mileage is not None and l.distance_traveled is not None and i > 0:
+                prev = sorted_asc[i - 1]
+                if prev.fuel_amount_liters and prev.fuel_amount_liters > 0:
                     total_mileage_distance += l.distance_traveled
-                    total_mileage_fuel += l.fuel_amount_liters
+                    total_mileage_fuel += prev.fuel_amount_liters
+
+        if fuel_logs:
+            for l in fuel_logs:  # sorted desc, so first is latest
+                if l.calculated_mileage is not None:
+                    latest_mileage = l.calculated_mileage
+                    break
 
         avg_mileage = (
             round(total_mileage_distance / total_mileage_fuel, 2)
             if total_mileage_fuel > 0
             else Decimal("0.0")
         )
-
-        # Fallback: if avg_mileage is 0 but we have fuel logs with distance and liters
-        if avg_mileage == 0 and fuel_logs:
-            total_fuel_liters = sum((l.fuel_amount_liters for l in fuel_logs if l.fuel_amount_liters), Decimal("0.0"))
-            valid_distance = total_distance if total_distance > 0 else sum((l.distance_traveled for l in fuel_logs if l.distance_traveled), Decimal("0.0"))
-            if valid_distance > 0 and total_fuel_liters > 0:
-                avg_mileage = round(valid_distance / total_fuel_liters, 2)
 
         if latest_mileage is None and avg_mileage > 0:
             latest_mileage = avg_mileage

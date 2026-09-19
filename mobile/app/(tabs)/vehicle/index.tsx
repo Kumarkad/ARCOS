@@ -113,17 +113,13 @@ export default function VehicleScreen() {
     if (!isNaN(fromServer) && fromServer > 0) return fromServer.toFixed(1);
 
     const logs = dashboard?.recent_fuel_logs || [];
-    const totalDist = logs.reduce((acc, l) => acc + (Number(l.distance_traveled) || 0), 0);
-    const totalFuel = logs.reduce((acc, l) => acc + (Number(l.fuel_amount_liters) || 0), 0);
-    if (totalDist > 0 && totalFuel > 0) {
-      return (totalDist / totalFuel).toFixed(1);
-    }
-    const odoDiff = (bike?.current_odometer || 0) - (bike?.initial_odometer || 0);
-    if (odoDiff > 0 && totalFuel > 0) {
-      return (odoDiff / totalFuel).toFixed(1);
+    const validLogs = logs.filter((l) => l.calculated_mileage && Number(l.calculated_mileage) > 0);
+    if (validLogs.length > 0) {
+      const sumKm = validLogs.reduce((acc, l) => acc + Number(l.calculated_mileage), 0);
+      return (sumKm / validLogs.length).toFixed(1);
     }
     return null;
-  }, [dashboard, bike]);
+  }, [dashboard]);
 
   const effectiveLatestMileage = React.useMemo(() => {
     const fromServer = Number(dashboard?.latest_mileage_kmpl);
@@ -133,9 +129,6 @@ export default function VehicleScreen() {
     for (const l of logs) {
       if (l.calculated_mileage && Number(l.calculated_mileage) > 0) {
         return Number(l.calculated_mileage).toFixed(1);
-      }
-      if (l.distance_traveled && l.fuel_amount_liters && Number(l.fuel_amount_liters) > 0) {
-        return (Number(l.distance_traveled) / Number(l.fuel_amount_liters)).toFixed(1);
       }
     }
     return effectiveAvgMileage;
@@ -717,8 +710,6 @@ export default function VehicleScreen() {
                 {(() => {
                   const itemMileage = log.calculated_mileage
                     ? Number(log.calculated_mileage).toFixed(1)
-                    : log.distance_traveled && log.fuel_amount_liters && Number(log.fuel_amount_liters) > 0
-                    ? (Number(log.distance_traveled) / Number(log.fuel_amount_liters)).toFixed(1)
                     : null;
 
                   return itemMileage ? (
