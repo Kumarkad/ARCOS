@@ -301,7 +301,13 @@ export default function InvestmentsScreen() {
     setIpoName(ipo.company_name);
     const details = [
       ipo.price_band ? `Price Band: ${ipo.price_band}` : '',
-      ipo.issue_size ? `Issue Size: ${ipo.issue_size}` : '',
+      ipo.issue_size ? `Total Issue Size: ${ipo.issue_size}` : '',
+      ipo.fresh_issue ? `Fresh Issue: ${ipo.fresh_issue}` : '',
+      ipo.offer_for_sale ? `Offer for Sale (OFS): ${ipo.offer_for_sale}` : '',
+      ipo.lot_size ? `Lot Size: ${ipo.lot_size} shares` : '',
+      ipo.retail_quota ? `Retail Quota: ${ipo.retail_quota}` : '',
+      ipo.allotment_date ? `Allotment Date: ${ipo.allotment_date}` : '',
+      ipo.listing_exchange ? `Listing Exchange: ${ipo.listing_exchange}` : '',
       ipo.expected_gmp ? `GMP: ${ipo.expected_gmp}` : '',
       ipo.sector ? `Sector: ${ipo.sector}` : '',
       ipo.listing_date ? `Listing Date: ${ipo.listing_date}` : '',
@@ -1225,9 +1231,15 @@ export default function InvestmentsScreen() {
                             </Text>
                           </View>
                           <View>
-                            <Text className="text-textSecondary text-[10px] font-medium">Issue Size</Text>
+                            <Text className="text-textSecondary text-[10px] font-medium">Total Issue Size</Text>
                             <Text className="text-text text-xs font-bold mt-0.5">
                               {ipo.issue_size || 'TBA'}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text className="text-textSecondary text-[10px] font-medium">Lot Size</Text>
+                            <Text className="text-text text-xs font-bold mt-0.5">
+                              {ipo.lot_size ? `${ipo.lot_size} Shares` : '1 Lot'}
                             </Text>
                           </View>
                           <View className="items-end">
@@ -1236,6 +1248,67 @@ export default function InvestmentsScreen() {
                               {ipo.listing_date || 'Upcoming'}
                             </Text>
                           </View>
+                        </View>
+
+                        {/* Fresh Issue & Offer For Sale (OFS) Breakdown */}
+                        <View className="flex-row items-stretch gap-2 mt-2">
+                          <View className="flex-1 bg-cyan-950/30 border border-cyan-800/40 rounded-lg p-2">
+                            <View className="flex-row items-center gap-1">
+                              <Ionicons name="sparkles-outline" size={11} color="#38bdf8" />
+                              <Text className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
+                                Fresh Issue
+                              </Text>
+                            </View>
+                            <Text className="text-text text-xs font-extrabold mt-1">
+                              {ipo.fresh_issue || 'To Be Announced'}
+                            </Text>
+                          </View>
+
+                          <View className="flex-1 bg-purple-950/30 border border-purple-800/40 rounded-lg p-2">
+                            <View className="flex-row items-center gap-1">
+                              <Ionicons name="swap-horizontal-outline" size={11} color="#c084fc" />
+                              <Text className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">
+                                Offer For Sale (OFS)
+                              </Text>
+                            </View>
+                            <Text className="text-text text-xs font-extrabold mt-1">
+                              {ipo.offer_for_sale || 'To Be Announced'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Extra IPO Details Row (Quotas, Allotment, Exchange) */}
+                        <View className="flex-row flex-wrap items-center gap-1.5 mt-2">
+                          {ipo.retail_quota && (
+                            <View className="bg-background px-2 py-0.5 rounded border border-border flex-row items-center gap-1">
+                              <Ionicons name="people-outline" size={10} color="#94a3b8" />
+                              <Text className="text-[10px] text-textSecondary font-medium">
+                                Retail: <Text className="text-text font-bold">{ipo.retail_quota}</Text>
+                              </Text>
+                            </View>
+                          )}
+                          {ipo.qib_quota && (
+                            <View className="bg-background px-2 py-0.5 rounded border border-border">
+                              <Text className="text-[10px] text-textSecondary font-medium">
+                                QIB: <Text className="text-text font-bold">{ipo.qib_quota}</Text> • NII: <Text className="text-text font-bold">{ipo.nii_quota || '15%'}</Text>
+                              </Text>
+                            </View>
+                          )}
+                          {ipo.allotment_date && (
+                            <View className="bg-background px-2 py-0.5 rounded border border-border flex-row items-center gap-1">
+                              <Ionicons name="checkmark-done-outline" size={10} color="#10b981" />
+                              <Text className="text-[10px] text-textSecondary font-medium">
+                                Allotment: <Text className="text-text font-bold">{ipo.allotment_date}</Text>
+                              </Text>
+                            </View>
+                          )}
+                          {ipo.listing_exchange && (
+                            <View className="bg-background px-2 py-0.5 rounded border border-border">
+                              <Text className="text-[10px] text-textSecondary font-medium">
+                                Exchange: <Text className="text-primary font-bold">{ipo.listing_exchange}</Text>
+                              </Text>
+                            </View>
+                          )}
                         </View>
 
                         {ipo.description && (

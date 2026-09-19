@@ -160,13 +160,23 @@ export interface UpcomingIPOItem {
   company_name: string;
   symbol?: string;
   issue_size?: string;
+  fresh_issue?: string;
+  offer_for_sale?: string;
   price_band?: string;
   open_date?: string;
   close_date?: string;
+  allotment_date?: string;
   listing_date?: string;
   status: string;
   expected_gmp?: string;
+  gmp_pct?: number;
+  lot_size?: number;
+  retail_quota?: string;
+  qib_quota?: string;
+  nii_quota?: string;
+  listing_exchange?: string;
   sector?: string;
   description?: string;
 }
+
 

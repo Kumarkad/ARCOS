@@ -176,15 +176,23 @@ class UpcomingIPOItem(BaseModel):
     symbol_tentative: Optional[str] = None
     symbol: Optional[str] = None
     issue_size: Optional[str] = "TBA"
+    fresh_issue: Optional[str] = None
+    offer_for_sale: Optional[str] = None
     price_band: Optional[str] = "TBA"
     open_date: Optional[str] = "Upcoming"
     close_date: Optional[str] = "Upcoming"
+    allotment_date: Optional[str] = None
     listing_date: Optional[str] = None
     status: str = "Upcoming"  # Open, Upcoming, Closed
     gmp_pct: Optional[float] = None
     expected_listing_gain: Optional[str] = None
     expected_gmp: Optional[str] = None
     lot_size: Optional[int] = 1
+    retail_quota: Optional[str] = "35%"
+    qib_quota: Optional[str] = "50%"
+    nii_quota: Optional[str] = "15%"
+    listing_exchange: Optional[str] = "BSE, NSE"
     category: Optional[str] = "Mainboard"
     sector: Optional[str] = "Mainboard Issue"
     description: Optional[str] = None
+

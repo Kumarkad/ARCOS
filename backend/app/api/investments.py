@@ -190,8 +190,8 @@ async def analyze_ipo(
 
 @router.get("/ipo/upcoming", response_model=APIResponse[List[UpcomingIPOItem]])
 async def get_upcoming_ipos(
-    user: User = Depends(get_current_user),
     service: IPOService = Depends(get_ipo_service)
 ):
     ipos = await service.get_upcoming_ipos()
     return APIResponse(data=ipos)
+
